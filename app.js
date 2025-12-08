@@ -306,6 +306,12 @@ class UIController {
         });
         document.getElementById(`${tabName}-tab`).classList.add('active');
 
+        // 显示/隐藏练习操作栏
+        const practiceToolbar = document.querySelector('.practice-toolbar');
+        if (practiceToolbar) {
+            practiceToolbar.style.display = (tabName === 'practice') ? 'flex' : 'none';
+        }
+
         // 刷新对应页面的数据
         if (tabName === 'manage') {
             this.loadWordList();
