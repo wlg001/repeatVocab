@@ -21,32 +21,37 @@ body {
     flex-direction: column;
 }
 
-header {
+/* 第一标题栏：主导航 */
+.main-header {
     background: #2d2d30;
     color: #cccccc;
-    padding: 12px 20px;
+    padding: 0;
     border-bottom: 1px solid #3e3e42;
     display: flex;
-    align-items: center;
-    gap: 15px;
+    align-items: stretch;
 }
 
-header h1 {
+.main-header h1 {
     font-size: 14px;
     font-weight: 400;
     color: #cccccc;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #3e3e42;
+    white-space: nowrap;
 }
 
 /* 标签导航 */
 .tabs {
     display: flex;
-    background: #252526;
-    border-bottom: 1px solid #3e3e42;
+    background: #2d2d30;
     overflow-x: auto;
+    flex: 1;
 }
 
 .tab-btn {
-    padding: 10px 20px;
+    padding: 12px 20px;
     border: none;
     background: none;
     font-size: 13px;
@@ -56,6 +61,7 @@ header h1 {
     border-right: 1px solid #3e3e42;
     white-space: nowrap;
     font-family: 'Consolas', 'Monaco', monospace;
+    position: relative;
 }
 
 .tab-btn:hover {
@@ -66,7 +72,16 @@ header h1 {
 .tab-btn.active {
     background: #1e1e1e;
     color: #ffffff;
-    border-top: 2px solid #007acc;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #007acc;
 }
 
 .tab-content {
@@ -155,16 +170,17 @@ header h1 {
     margin-top: 30px;
 }
 
-/* 练习控制栏 */
+/* 第二标题栏：练习模式操作栏 */
+.secondary-header {
+    background: #252526;
+    border-bottom: 1px solid #3e3e42;
+}
+
 .practice-toolbar {
     display: flex;
     align-items: center;
     gap: 30px;
-    padding: 15px 20px;
-    background: #252526;
-    border: 1px solid #3e3e42;
-    border-radius: 4px;
-    margin-bottom: 20px;
+    padding: 12px 20px;
     flex-wrap: wrap;
 }
 

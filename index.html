@@ -8,21 +8,18 @@
 </head>
 <body>
     <div class="container">
-        <header>
+        <!-- 第一标题栏：主导航 -->
+        <header class="main-header">
             <h1>🎯 英语单词听默练习</h1>
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="practice">练习</button>
+                <button class="tab-btn" data-tab="manage">单词管理</button>
+                <button class="tab-btn" data-tab="stats">统计</button>
+            </nav>
         </header>
 
-        <!-- 导航标签 -->
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="practice">练习</button>
-            <button class="tab-btn" data-tab="manage">单词管理</button>
-            <button class="tab-btn" data-tab="stats">统计</button>
-        </nav>
-
-        <!-- 练习页面 -->
-        <div id="practice-tab" class="tab-content active">
-            <!-- 练习控制栏 -->
-            <div class="practice-toolbar">
+        <!-- 第二标题栏：练习模式操作栏 -->
+        <div class="secondary-header practice-toolbar">
                 <div class="toolbar-section">
                     <label class="toolbar-label">练习模式</label>
                     <div class="toolbar-controls">
@@ -48,9 +45,12 @@
 
                 <div class="toolbar-section">
                     <button id="start-practice-btn" class="btn btn-primary">开始练习</button>
-                    <button id="stop-practice-btn" class="btn btn-secondary" style="display: none;">结束练习</button>
+                    <button id="stop-practice-btn" class="btn btn-secondary" style="display: none;">停止练习</button>
                 </div>
             </div>
+
+        <!-- 练习页面 -->
+        <div id="practice-tab" class="tab-content active">
 
             <!-- 练习区域 -->
             <div id="practice-area" class="practice-area" style="display: none;">
