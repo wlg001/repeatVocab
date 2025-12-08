@@ -443,7 +443,7 @@ class UIController {
         if (result.isCorrect) {
             // 正确，显示单词和释义
             this.showCorrectAnswer();
-            setTimeout(() => this.nextWord(), 1500);
+            setTimeout(() => this.nextWord(), 3000);
         } else {
             // 错误
             if (result.shouldShowAnswer) {
