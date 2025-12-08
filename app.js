@@ -1,6 +1,55 @@
 // ==================== 数据存储模块 ====================
 class Storage {
     static STORAGE_KEY = 'vocabApp_words';
+    static PRACTICE_LOG_KEY = 'vocabApp_practiceLog';
+
+    // 获取所有单词
+    static getWords() {
+        const data = localStorage.getItem(this.STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+    }
+
+    // 保存所有单词
+    static saveWords(words) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(words));
+    }
+
+    // 获取练习日志
+    static getPracticeLog() {
+        const data = localStorage.getItem(this.PRACTICE_LOG_KEY);
+        return data ? JSON.parse(data) : {};
+    }
+
+    // 保存练习日志
+    static savePracticeLog(log) {
+        localStorage.setItem(this.PRACTICE_LOG_KEY, JSON.stringify(log));
+    }
+
+    // 记录今日练习
+    static recordTodayPractice(wordId, isCorrect) {
+        const log = this.getPracticeLog();
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        if (!log[today]) {
+            log[today] = {
+                wordIds: new Set(),
+                correctCount: 0
+            };
+        } else {
+            // 将已有的wordIds数组转换为Set
+            log[today].wordIds = new Set(log[today].wordIds || []);
+        }
+        
+        log[today].wordIds.add(wordId);
+        if (isCorrect) {
+            log[today].correctCount = (log[today].correctCount || 0) + 1;
+        }
+        
+        // 将Set转换回数组以便JSON序列化
+        log[today].wordIds = Array.from(log[today].wordIds);
+        
+        this.savePracticeLog(log);
+    }
 
     // 获取所有单词
     static getWords() {
@@ -213,10 +262,14 @@ class PracticeManager {
             word.proficiency += 1;
             word.stats.correctCount++;
             this.consecutiveErrors = 0;
+            // 记录今日练习（正确）
+            Storage.recordTodayPractice(word.id, true);
         } else {
             word.proficiency -= 1;
             word.stats.errorCount++;
             this.consecutiveErrors++;
+            // 记录今日练习（错误）
+            Storage.recordTodayPractice(word.id, false);
         }
         
         Storage.updateWord(word.id, word);
@@ -329,6 +382,10 @@ class UIController {
         // 单词列表排序
         document.getElementById('sort-by-proficiency').addEventListener('click', () => this.sortWordList('proficiency'));
         document.getElementById('sort-by-time').addEventListener('click', () => this.sortWordList('time'));
+
+        // 日历切换月份
+        document.getElementById('prev-month').addEventListener('click', () => this.prevMonth());
+        document.getElementById('next-month').addEventListener('click', () => this.nextMonth());
     }
 
     // 切换标签
@@ -847,6 +904,9 @@ class UIController {
         document.getElementById('total-correct').textContent = totalCorrect;
         document.getElementById('total-error').textContent = totalError;
 
+        // 更新打卡日历
+        this.updateCalendar();
+
         // 单词详细统计
         const statsListContainer = document.getElementById('word-stats-list');
         
@@ -870,6 +930,120 @@ class UIController {
                 </div>
             </div>
         `).join('');
+    }
+
+    // 更新打卡日历
+    updateCalendar(year, month) {
+        if (!year || !month) {
+            const now = new Date();
+            year = now.getFullYear();
+            month = now.getMonth();
+        }
+
+        this.currentCalendarYear = year;
+        this.currentCalendarMonth = month;
+
+        const practiceLog = Storage.getPracticeLog();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startWeekday = firstDay.getDay();
+
+        // 更新标题
+        const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', 
+                           '七月', '八月', '九月', '十月', '十一月', '十二月'];
+        document.getElementById('calendar-title').textContent = `${year}年 ${monthNames[month]}`;
+
+        // 生成日历网格
+        const calendarGrid = document.getElementById('calendar-grid');
+        let gridHTML = '';
+
+        // 添加星期标题
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        weekdays.forEach(day => {
+            gridHTML += `<div class="calendar-weekday">${day}</div>`;
+        });
+
+        // 添加上月的空白天数
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (let i = startWeekday - 1; i >= 0; i--) {
+            const day = prevMonthLastDay - i;
+            gridHTML += `<div class="calendar-day other-month">
+                <div class="day-number">${day}</div>
+            </div>`;
+        }
+
+        // 添加当月的天数
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = dateStr === todayStr;
+            const dayLog = practiceLog[dateStr];
+            
+            let practiceClass = 'no-practice';
+            let practiceInfo = '';
+            
+            if (dayLog) {
+                const wordCount = dayLog.wordIds ? dayLog.wordIds.length : 0;
+                const correctCount = dayLog.correctCount || 0;
+                
+                if (wordCount > 0) {
+                    practiceInfo = `${wordCount}词 ${correctCount}对`;
+                    
+                    if (wordCount >= 16) {
+                        practiceClass = 'high-practice';
+                    } else if (wordCount >= 6) {
+                        practiceClass = 'medium-practice';
+                    } else {
+                        practiceClass = 'low-practice';
+                    }
+                }
+            }
+            
+            gridHTML += `<div class="calendar-day ${practiceClass} ${isToday ? 'today' : ''}" 
+                              title="${dateStr}${practiceInfo ? '\n' + practiceInfo : ''}">
+                <div class="day-number">${day}</div>
+                ${practiceInfo ? `<div class="day-practice-count">${practiceInfo}</div>` : ''}
+            </div>`;
+        }
+
+        // 添加下月的空白天数
+        const remainingDays = 42 - (startWeekday + daysInMonth); // 6行x7列=42格
+        for (let day = 1; day <= remainingDays; day++) {
+            gridHTML += `<div class="calendar-day other-month">
+                <div class="day-number">${day}</div>
+            </div>`;
+        }
+
+        calendarGrid.innerHTML = gridHTML;
+    }
+
+    // 切换到上个月
+    prevMonth() {
+        let year = this.currentCalendarYear;
+        let month = this.currentCalendarMonth - 1;
+        
+        if (month < 0) {
+            month = 11;
+            year--;
+        }
+        
+        this.updateCalendar(year, month);
+    }
+
+    // 切换到下个月
+    nextMonth() {
+        let year = this.currentCalendarYear;
+        let month = this.currentCalendarMonth + 1;
+        
+        if (month > 11) {
+            month = 0;
+            year++;
+        }
+        
+        this.updateCalendar(year, month);
     }
 }
 

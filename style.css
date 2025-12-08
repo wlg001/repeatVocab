@@ -601,6 +601,138 @@ body {
     color: #858585;
 }
 
+/* 打卡日历 */
+.calendar-container {
+    background: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-title {
+    font-size: 16px;
+    font-weight: 400;
+    color: #cccccc;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 15px;
+}
+
+.calendar-weekday {
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    color: #858585;
+    font-weight: 400;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 4px;
+}
+
+.calendar-day:hover {
+    border-color: #007acc;
+    transform: scale(1.05);
+}
+
+.calendar-day.other-month {
+    opacity: 0.3;
+}
+
+.calendar-day.today {
+    border: 2px solid #007acc;
+}
+
+.day-number {
+    font-size: 12px;
+    color: #cccccc;
+    margin-bottom: 2px;
+}
+
+.day-practice-count {
+    font-size: 10px;
+    color: #858585;
+}
+
+/* 练习强度颜色 */
+.calendar-day.no-practice {
+    background: #1e1e1e;
+}
+
+.calendar-day.low-practice {
+    background: #1a3a1a;
+}
+
+.calendar-day.medium-practice {
+    background: #2a5a2a;
+}
+
+.calendar-day.high-practice {
+    background: #3a7a3a;
+}
+
+.calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid #3e3e42;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #858585;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #3e3e42;
+    border-radius: 2px;
+}
+
+.legend-color.no-practice {
+    background: #1e1e1e;
+}
+
+.legend-color.low-practice {
+    background: #1a3a1a;
+}
+
+.legend-color.medium-practice {
+    background: #2a5a2a;
+}
+
+.legend-color.high-practice {
+    background: #3a7a3a;
+}
+
 .word-stats-list {
     max-height: 500px;
     overflow-y: auto;
