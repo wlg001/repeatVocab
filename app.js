@@ -402,8 +402,8 @@ class UIController {
                     
                     // 检查是否连续错误5次
                     if (this.practiceManager.consecutiveErrors >= 5) {
-                        // 达到5次，显示正确答案3秒
-                        this.showFeedback(`连续错误5次！正确答案是: ${word.word} (${word.meanings.join('；')})`, 'error', true);
+                        // 达到5次，用绿框显示正确答案3秒
+                        this.showCorrectAnswerForError(word);
                         inputField.disabled = true;
                         this.practiceManager.resetErrors();
                         
@@ -413,8 +413,8 @@ class UIController {
                             this.nextWord();
                         }, 3000);
                     } else {
-                        // 未达到5次，提示并清空输入框
-                        this.showFeedback(`✗ 字母错误！请重新输入 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
+                        // 未达到5次，红框提示并清空输入框
+                        this.showFeedback(`✗ 连续错误${this.practiceManager.consecutiveErrors}次`, 'error');
                         
                         // 延迟清空输入
                         setTimeout(() => {
@@ -456,7 +456,7 @@ class UIController {
         }
     }
 
-    // 显示正确答案
+    // 显示正确答案（拼写正确时）
     showCorrectAnswer() {
         const word = this.practiceManager.currentWord;
         const display = document.getElementById('correct-answer-display');
@@ -464,6 +464,22 @@ class UIController {
         const meaningsElement = display.querySelector('.correct-meanings');
 
         wordElement.textContent = `✓ ${word.word}`;
+        meaningsElement.textContent = word.meanings.join('；');
+
+        display.style.display = 'block';
+        
+        // 隐藏输入框和其他提示
+        document.getElementById('word-input').style.opacity = '0.5';
+        document.getElementById('error-message').style.display = 'none';
+    }
+
+    // 显示正确答案（连续错误5次时）
+    showCorrectAnswerForError(word) {
+        const display = document.getElementById('correct-answer-display');
+        const wordElement = display.querySelector('.correct-word');
+        const meaningsElement = display.querySelector('.correct-meanings');
+
+        wordElement.textContent = `${word.word}`;
         meaningsElement.textContent = word.meanings.join('；');
 
         display.style.display = 'block';
