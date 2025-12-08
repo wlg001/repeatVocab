@@ -492,8 +492,21 @@ class UIController {
 
         // 检查是否已存在
         const existingWords = Storage.getWords();
-        if (existingWords.some(w => w.word.toLowerCase() === word.toLowerCase())) {
-            alert('该单词已存在！');
+        const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
+        
+        if (existingWord) {
+            // 单词已存在，重置熟练度为-100
+            if (confirm(`单词"${word}"已存在！是否重置熟练度为-100并更新释义？`)) {
+                existingWord.proficiency = -100;
+                existingWord.meanings = meanings;
+                Storage.updateWord(existingWord.id, existingWord);
+                
+                wordInput.value = '';
+                meaningsInput.value = '';
+                
+                this.loadWordList();
+                this.showFeedback('单词熟练度已重置！', 'success');
+            }
             return;
         }
 
@@ -546,17 +559,24 @@ class UIController {
                 return;
             }
 
-            // 检查是否已存在
-            if (existingWordsSet.has(word.toLowerCase())) {
-                skipCount++;
-                return;
-            }
-
             // 解析释义（支持逗号分隔）
             const meanings = meaningsText.split(/[,，]/).map(m => m.trim()).filter(m => m);
             if (meanings.length === 0) {
                 errorCount++;
                 errors.push(`第${index + 1}行：没有有效的释义`);
+                return;
+            }
+
+            // 检查是否已存在
+            if (existingWordsSet.has(word.toLowerCase())) {
+                // 单词已存在，重置熟练度
+                const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
+                if (existingWord) {
+                    existingWord.proficiency = -100;
+                    existingWord.meanings = meanings;
+                    Storage.updateWord(existingWord.id, existingWord);
+                    successCount++;
+                }
                 return;
             }
 
@@ -572,7 +592,7 @@ class UIController {
         });
 
         // 显示导入结果
-        let message = `导入完成！\n成功: ${successCount} 个\n跳过（已存在）: ${skipCount} 个\n失败: ${errorCount} 个`;
+        let message = `导入完成！\n成功: ${successCount} 个（包括重置已存在单词）\n失败: ${errorCount} 个`;
         
         if (errors.length > 0 && errors.length <= 5) {
             message += '\n\n错误详情：\n' + errors.join('\n');
