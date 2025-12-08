@@ -405,8 +405,12 @@ class UIController {
                         this.showFeedback(`连续错误5次！正确答案是: ${word.word} (${word.meanings.join('；')})`, 'error', true);
                         this.practiceManager.resetErrors();
                         
+                        // 禁用输入框
+                        inputField.disabled = true;
+                        
                         // 3秒后切换到下一个单词
                         setTimeout(() => {
+                            inputField.disabled = false;
                             this.nextWord();
                         }, 3000);
                     } else {
@@ -422,7 +426,7 @@ class UIController {
                         }, 500);
                     }
                 }
-            } else if (this.practiceManager.consecutiveErrors < 5) {
+            } else if (this.practiceManager.consecutiveErrors < 5 && this.practiceManager.errorRecorded) {
                 // 如果已经记录但未达到5次，延迟清空输入
                 setTimeout(() => {
                     this.clearInput();
