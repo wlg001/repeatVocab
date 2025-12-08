@@ -66,6 +66,12 @@ class Storage {
             .sort((a, b) => a.proficiency - b.proficiency)
             .slice(0, n);
     }
+
+    // 获取熟练度在指定区间内的单词
+    static getWordsByProficiencyRange(minProficiency, maxProficiency) {
+        const words = this.getWords();
+        return words.filter(w => w.proficiency >= minProficiency && w.proficiency <= maxProficiency);
+    }
 }
 
 // ==================== 练习管理模块 ====================
@@ -80,16 +86,30 @@ class PracticeManager {
             audio: true,
             chinese: true
         };
+        this.proficiencyRange = {
+            min: -100,
+            max: 100
+        };
     }
 
     // 获取下一个练习单词
     getNextWord() {
-        const words = Storage.getLowestProficiencyWords(20);
-        if (words.length === 0) return null;
+        // 获取熟练度区间内的单词
+        const wordsInRange = Storage.getWordsByProficiencyRange(
+            this.proficiencyRange.min,
+            this.proficiencyRange.max
+        );
+        
+        if (wordsInRange.length === 0) return null;
+        
+        // 从区间内按熟练度排序，取最低的20个
+        const lowestWords = wordsInRange
+            .sort((a, b) => a.proficiency - b.proficiency)
+            .slice(0, Math.min(20, wordsInRange.length));
         
         // 随机选择一个
-        const randomIndex = Math.floor(Math.random() * words.length);
-        this.currentWord = words[randomIndex];
+        const randomIndex = Math.floor(Math.random() * lowestWords.length);
+        this.currentWord = lowestWords[randomIndex];
         
         // 随机选择练习模式
         const availableModes = [];
@@ -185,6 +205,12 @@ class PracticeManager {
     setEnabledModes(audio, chinese) {
         this.enabledModes.audio = audio;
         this.enabledModes.chinese = chinese;
+    }
+
+    // 设置熟练度区间
+    setProficiencyRange(min, max) {
+        this.proficiencyRange.min = min;
+        this.proficiencyRange.max = max;
     }
 }
 
@@ -298,6 +324,20 @@ class UIController {
             return;
         }
 
+        // 获取熟练度区间设置
+        const minProficiency = parseInt(document.getElementById('min-proficiency').value);
+        const maxProficiency = parseInt(document.getElementById('max-proficiency').value);
+
+        if (isNaN(minProficiency) || isNaN(maxProficiency)) {
+            alert('请输入有效的熟练度数值！');
+            return;
+        }
+
+        if (minProficiency > maxProficiency) {
+            alert('最低熟练度不能大于最高熟练度！');
+            return;
+        }
+
         const words = Storage.getWords();
         if (words.length === 0) {
             alert('请先添加单词！');
@@ -305,7 +345,15 @@ class UIController {
             return;
         }
 
+        // 检查区间内是否有单词
+        const wordsInRange = Storage.getWordsByProficiencyRange(minProficiency, maxProficiency);
+        if (wordsInRange.length === 0) {
+            alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有单词！\n请调整区间设置。`);
+            return;
+        }
+
         this.practiceManager.setEnabledModes(audioMode, chineseMode);
+        this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
 
         document.querySelector('.practice-settings').style.display = 'none';
         document.getElementById('practice-area').style.display = 'block';

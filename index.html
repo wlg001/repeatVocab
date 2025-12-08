@@ -33,6 +33,22 @@
                         <span>看中文默写</span>
                     </label>
                 </div>
+                
+                <h3>熟练度区间</h3>
+                <div class="proficiency-range">
+                    <div class="range-inputs">
+                        <div class="range-input-group">
+                            <label for="min-proficiency">最低熟练度</label>
+                            <input type="number" id="min-proficiency" class="input input-small" value="-100" step="1">
+                        </div>
+                        <div class="range-input-group">
+                            <label for="max-proficiency">最高熟练度</label>
+                            <input type="number" id="max-proficiency" class="input input-small" value="100" step="1">
+                        </div>
+                    </div>
+                    <div class="range-hint">只练习熟练度在此区间内的单词</div>
+                </div>
+                
                 <button id="start-practice-btn" class="btn btn-primary">开始练习</button>
             </div>
 
