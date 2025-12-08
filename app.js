@@ -379,17 +379,18 @@ class UIController {
         errorMessage.style.display = 'none';
 
         if (validation.isComplete && validation.isCorrect) {
-            // 完全正确
+            // 完全正确，提交答案
             inputField.classList.add('correct');
             setTimeout(() => this.handleSubmit(), 500);
         } else if (!validation.isCorrect && input.length > 0) {
-            // 输入错误，立即清空并要求重新输入
+            // 字母拼写错误
             inputField.classList.add('error');
             
             // 只在第一次检测到错误时记录
             if (!this.practiceManager.errorRecorded) {
                 const word = this.practiceManager.currentWord;
                 if (word) {
+                    // 记录错误统计
                     const updatedWord = Storage.getWordById(word.id);
                     updatedWord.proficiency -= 1;
                     updatedWord.stats.errorCount++;
@@ -397,16 +398,14 @@ class UIController {
                     updatedWord.stats.lastPracticeTime = new Date().toISOString();
                     Storage.updateWord(updatedWord.id, updatedWord);
                     this.practiceManager.consecutiveErrors++;
-                    this.practiceManager.errorRecorded = true; // 标记已记录错误
+                    this.practiceManager.errorRecorded = true;
                     
                     // 检查是否连续错误5次
                     if (this.practiceManager.consecutiveErrors >= 5) {
-                        // 显示正确答案
+                        // 达到5次，显示正确答案3秒
                         this.showFeedback(`连续错误5次！正确答案是: ${word.word} (${word.meanings.join('；')})`, 'error', true);
-                        this.practiceManager.resetErrors();
-                        
-                        // 禁用输入框
                         inputField.disabled = true;
+                        this.practiceManager.resetErrors();
                         
                         // 3秒后切换到下一个单词
                         setTimeout(() => {
@@ -414,25 +413,19 @@ class UIController {
                             this.nextWord();
                         }, 3000);
                     } else {
-                        // 显示错误提示，包含连续错误次数
-                        this.showFeedback(`✗ 字母错误！请重新输入完整单词 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
+                        // 未达到5次，提示并清空输入框
+                        this.showFeedback(`✗ 字母错误！请重新输入 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
                         
-                        // 延迟清空输入，让用户看到错误提示
+                        // 延迟清空输入
                         setTimeout(() => {
-                            this.clearInput();
+                            inputField.value = '';
+                            inputField.classList.remove('error');
+                            errorMessage.style.display = 'none';
                             inputField.focus();
-                            // 重置错误记录标记，允许下次输入时再次记录
                             this.practiceManager.errorRecorded = false;
                         }, 500);
                     }
                 }
-            } else if (this.practiceManager.consecutiveErrors < 5 && this.practiceManager.errorRecorded) {
-                // 如果已经记录但未达到5次，延迟清空输入
-                setTimeout(() => {
-                    this.clearInput();
-                    inputField.focus();
-                    this.practiceManager.errorRecorded = false;
-                }, 500);
             }
         }
     }
