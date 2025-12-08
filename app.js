@@ -399,18 +399,37 @@ class UIController {
                     this.practiceManager.consecutiveErrors++;
                     this.practiceManager.errorRecorded = true; // 标记已记录错误
                     
-                    // 显示错误提示，包含连续错误次数
-                    this.showFeedback(`✗ 字母错误！请重新输入完整单词 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
+                    // 检查是否连续错误5次
+                    if (this.practiceManager.consecutiveErrors >= 5) {
+                        // 显示正确答案
+                        this.showFeedback(`连续错误5次！正确答案是: ${word.word} (${word.meanings.join('；')})`, 'error', true);
+                        this.practiceManager.resetErrors();
+                        
+                        // 3秒后切换到下一个单词
+                        setTimeout(() => {
+                            this.nextWord();
+                        }, 3000);
+                    } else {
+                        // 显示错误提示，包含连续错误次数
+                        this.showFeedback(`✗ 字母错误！请重新输入完整单词 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
+                        
+                        // 延迟清空输入，让用户看到错误提示
+                        setTimeout(() => {
+                            this.clearInput();
+                            inputField.focus();
+                            // 重置错误记录标记，允许下次输入时再次记录
+                            this.practiceManager.errorRecorded = false;
+                        }, 500);
+                    }
                 }
+            } else if (this.practiceManager.consecutiveErrors < 5) {
+                // 如果已经记录但未达到5次，延迟清空输入
+                setTimeout(() => {
+                    this.clearInput();
+                    inputField.focus();
+                    this.practiceManager.errorRecorded = false;
+                }, 500);
             }
-            
-            // 延迟清空输入，让用户看到错误提示
-            setTimeout(() => {
-                this.clearInput();
-                inputField.focus();
-                // 重置错误记录标记，允许下次输入时再次记录
-                this.practiceManager.errorRecorded = false;
-            }, 500);
         }
     }
 
