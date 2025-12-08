@@ -471,6 +471,9 @@ class UIController {
         // 隐藏输入框和其他提示
         document.getElementById('word-input').style.opacity = '0.5';
         document.getElementById('error-message').style.display = 'none';
+        
+        // 自动播放单词发音
+        this.audioManager.speak(word.word);
     }
 
     // 显示正确答案（连续错误5次时）
@@ -487,6 +490,9 @@ class UIController {
         // 隐藏输入框和其他提示
         document.getElementById('word-input').style.opacity = '0.5';
         document.getElementById('error-message').style.display = 'none';
+        
+        // 自动播放单词发音
+        this.audioManager.speak(word.word);
     }
 
     // 显示反馈
