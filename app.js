@@ -738,12 +738,19 @@ class UIController {
             sortedWords.sort((a, b) => new Date(b.addedTime) - new Date(a.addedTime));
         }
 
-        listContainer.innerHTML = sortedWords.map(word => `
+        listContainer.innerHTML = sortedWords.map(word => {
+            const addedDate = new Date(word.addedTime).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            return `
             <div class="word-item">
                 <div class="word-info">
                     <div class="word-title">${word.word}</div>
                     <div class="word-meanings">${word.meanings.join(', ')}</div>
                     <div class="word-meta">
+                        加入时间: ${addedDate} | 
                         练习: ${word.stats.practiceCount}次 | 
                         正确: ${word.stats.correctCount}次 | 
                         错误: ${word.stats.errorCount}次
@@ -754,7 +761,8 @@ class UIController {
                     <button class="btn btn-delete" onclick="ui.deleteWord('${word.id}')">删除</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     // 排序单词列表
