@@ -72,6 +72,19 @@ class Storage {
         const words = this.getWords();
         return words.filter(w => w.proficiency >= minProficiency && w.proficiency <= maxProficiency);
     }
+
+    // 获取今日新增的单词
+    static getTodayNewWords() {
+        const words = this.getWords();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return words.filter(w => {
+            const addedDate = new Date(w.addedTime);
+            addedDate.setHours(0, 0, 0, 0);
+            return addedDate.getTime() === today.getTime();
+        });
+    }
 }
 
 // ==================== 练习管理模块 ====================
@@ -90,26 +103,46 @@ class PracticeManager {
             min: -100,
             max: 100
         };
+        this.todayNewWordsOnly = false; // 是否只练习今日新词
     }
 
     // 获取下一个练习单词
     getNextWord() {
-        // 获取熟练度区间内的单词
-        const wordsInRange = Storage.getWordsByProficiencyRange(
-            this.proficiencyRange.min,
-            this.proficiencyRange.max
-        );
+        let availableWords;
         
-        if (wordsInRange.length === 0) return null;
-        
-        // 从区间内按熟练度排序，取最低的20个
-        const lowestWords = wordsInRange
-            .sort((a, b) => a.proficiency - b.proficiency)
-            .slice(0, Math.min(20, wordsInRange.length));
-        
-        // 随机选择一个
-        const randomIndex = Math.floor(Math.random() * lowestWords.length);
-        this.currentWord = lowestWords[randomIndex];
+        // 如果开启了今日新词模式
+        if (this.todayNewWordsOnly) {
+            availableWords = Storage.getTodayNewWords();
+            
+            // 如果没有今日新词，返回null
+            if (availableWords.length === 0) return null;
+            
+            // 从今日新词中按熟练度排序，取最低的20个
+            const lowestWords = availableWords
+                .sort((a, b) => a.proficiency - b.proficiency)
+                .slice(0, Math.min(20, availableWords.length));
+            
+            // 随机选择一个
+            const randomIndex = Math.floor(Math.random() * lowestWords.length);
+            this.currentWord = lowestWords[randomIndex];
+        } else {
+            // 获取熟练度区间内的单词
+            const wordsInRange = Storage.getWordsByProficiencyRange(
+                this.proficiencyRange.min,
+                this.proficiencyRange.max
+            );
+            
+            if (wordsInRange.length === 0) return null;
+            
+            // 从区间内按熟练度排序，取最低的20个
+            const lowestWords = wordsInRange
+                .sort((a, b) => a.proficiency - b.proficiency)
+                .slice(0, Math.min(20, wordsInRange.length));
+            
+            // 随机选择一个
+            const randomIndex = Math.floor(Math.random() * lowestWords.length);
+            this.currentWord = lowestWords[randomIndex];
+        }
         
         // 随机选择练习模式
         const availableModes = [];
@@ -211,6 +244,11 @@ class PracticeManager {
     setProficiencyRange(min, max) {
         this.proficiencyRange.min = min;
         this.proficiencyRange.max = max;
+    }
+
+    // 设置是否只练习今日新词
+    setTodayNewWordsOnly(enabled) {
+        this.todayNewWordsOnly = enabled;
     }
 }
 
@@ -324,6 +362,7 @@ class UIController {
     startPractice() {
         const audioMode = document.getElementById('mode-audio').checked;
         const chineseMode = document.getElementById('mode-chinese').checked;
+        const todayNewWordsOnly = document.getElementById('mode-today-new').checked;
 
         if (!audioMode && !chineseMode) {
             alert('请至少选择一种练习模式！');
@@ -351,15 +390,25 @@ class UIController {
             return;
         }
 
-        // 检查区间内是否有单词
-        const wordsInRange = Storage.getWordsByProficiencyRange(minProficiency, maxProficiency);
-        if (wordsInRange.length === 0) {
-            alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有单词！\n请调整区间设置。`);
-            return;
+        // 如果开启了今日新词模式
+        if (todayNewWordsOnly) {
+            const todayWords = Storage.getTodayNewWords();
+            if (todayWords.length === 0) {
+                alert('今天还没有添加新单词！');
+                return;
+            }
+        } else {
+            // 检查区间内是否有单词
+            const wordsInRange = Storage.getWordsByProficiencyRange(minProficiency, maxProficiency);
+            if (wordsInRange.length === 0) {
+                alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有单词！\n请调整区间设置。`);
+                return;
+            }
         }
 
         this.practiceManager.setEnabledModes(audioMode, chineseMode);
         this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
+        this.practiceManager.setTodayNewWordsOnly(todayNewWordsOnly);
 
         // 隐藏开始按钮，显示结束按钮
         document.getElementById('start-practice-btn').style.display = 'none';
