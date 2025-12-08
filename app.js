@@ -385,7 +385,6 @@ class UIController {
         } else if (!validation.isCorrect && input.length > 0) {
             // 输入错误，立即清空并要求重新输入
             inputField.classList.add('error');
-            this.showFeedback('✗ 字母错误！请重新输入完整单词', 'error');
             
             // 只在第一次检测到错误时记录
             if (!this.practiceManager.errorRecorded) {
@@ -399,6 +398,9 @@ class UIController {
                     Storage.updateWord(updatedWord.id, updatedWord);
                     this.practiceManager.consecutiveErrors++;
                     this.practiceManager.errorRecorded = true; // 标记已记录错误
+                    
+                    // 显示错误提示，包含连续错误次数
+                    this.showFeedback(`✗ 字母错误！请重新输入完整单词 (连续错误${this.practiceManager.consecutiveErrors}次)`, 'error');
                 }
             }
             
