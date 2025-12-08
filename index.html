@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语单词听默APP</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 英语单词听默练习</h1>
+        </header>
+
+        <!-- 导航标签 -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="practice">练习</button>
+            <button class="tab-btn" data-tab="manage">单词管理</button>
+            <button class="tab-btn" data-tab="stats">统计</button>
+        </nav>
+
+        <!-- 练习页面 -->
+        <div id="practice-tab" class="tab-content active">
+            <div class="practice-settings">
+                <h3>练习模式</h3>
+                <div class="mode-selection">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="mode-audio" checked>
+                        <span>听发音默写</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="mode-chinese" checked>
+                        <span>看中文默写</span>
+                    </label>
+                </div>
+                <button id="start-practice-btn" class="btn btn-primary">开始练习</button>
+            </div>
+
+            <div id="practice-area" class="practice-area" style="display: none;">
+                <div class="practice-header">
+                    <div class="practice-info">
+                        <span id="current-mode-display"></span>
+                        <span id="proficiency-display"></span>
+                    </div>
+                    <button id="stop-practice-btn" class="btn btn-secondary">结束练习</button>
+                </div>
+
+                <div class="practice-content">
+                    <!-- 听音模式 -->
+                    <div id="audio-mode-content" class="mode-content" style="display: none;">
+                        <button id="play-audio-btn" class="btn btn-audio">🔊 播放发音</button>
+                    </div>
+
+                    <!-- 看中文模式 -->
+                    <div id="chinese-mode-content" class="mode-content" style="display: none;">
+                        <div class="chinese-meaning" id="chinese-meaning"></div>
+                    </div>
+
+                    <!-- 输入区域 -->
+                    <div class="input-area">
+                        <input 
+                            type="text" 
+                            id="word-input" 
+                            class="word-input" 
+                            placeholder="请输入单词拼写..."
+                            autocomplete="off"
+                            spellcheck="false">
+                        <div id="input-feedback" class="input-feedback"></div>
+                    </div>
+
+                    <!-- 错误提示 -->
+                    <div id="error-message" class="error-message" style="display: none;"></div>
+
+                    <!-- 正确答案显示 -->
+                    <div id="correct-answer-display" class="correct-answer-display" style="display: none;">
+                        <div class="correct-word"></div>
+                        <div class="correct-meanings"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 单词管理页面 -->
+        <div id="manage-tab" class="tab-content">
+            <div class="add-word-section">
+                <h3>批量导入单词</h3>
+                <div class="form-group">
+                    <label for="bulk-import">
+                        一行一个单词，格式：英文单词 中文释义1,释义2
+                        <span style="color: #858585; font-size: 11px; margin-left: 10px;">
+                            例如：example 示例,例子
+                        </span>
+                    </label>
+                    <textarea 
+                        id="bulk-import" 
+                        class="input textarea" 
+                        rows="10" 
+                        placeholder="example 示例,例子&#10;apple 苹果&#10;computer 计算机,电脑"></textarea>
+                </div>
+                <button id="bulk-import-btn" class="btn btn-primary">批量导入</button>
+            </div>
+
+            <div class="add-word-section">
+                <h3>添加单个单词</h3>
+                <div class="form-group">
+                    <label for="new-word">英文单词</label>
+                    <input type="text" id="new-word" class="input" placeholder="例如: example">
+                </div>
+                <div class="form-group">
+                    <label for="new-meanings">中文释义（多个释义用逗号分隔）</label>
+                    <input type="text" id="new-meanings" class="input" placeholder="例如: 示例,例子">
+                </div>
+                <button id="add-word-btn" class="btn btn-primary">添加单词</button>
+            </div>
+
+            <div class="word-list-section">
+                <h3>单词列表 <span id="word-count" class="count-badge">0</span></h3>
+                <div class="word-list-controls">
+                    <button id="sort-by-proficiency" class="btn btn-small">按熟练度排序</button>
+                    <button id="sort-by-time" class="btn btn-small">按添加时间排序</button>
+                </div>
+                <div id="word-list" class="word-list"></div>
+            </div>
+        </div>
+
+        <!-- 统计页面 -->
+        <div id="stats-tab" class="tab-content">
+            <h3>练习统计</h3>
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-words">0</div>
+                    <div class="stat-label">总单词数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-practice">0</div>
+                    <div class="stat-label">总练习次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-correct">0</div>
+                    <div class="stat-label">正确次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-error">0</div>
+                    <div class="stat-label">错误次数</div>
+                </div>
+            </div>
+
+            <h3>单词详细统计</h3>
+            <div id="word-stats-list" class="word-stats-list"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
