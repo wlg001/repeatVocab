@@ -641,6 +641,8 @@ class UIController {
         document.getElementById('chinese-mode-content').style.display = mode === 'chinese' ? 'block' : 'none';
 
         if (mode === 'audio') {
+            // 隐藏首字母提示
+            document.getElementById('first-letter-hint').style.display = 'none';
             // 自动播放一次
             setTimeout(() => this.playAudio(), 300);
         } else {
@@ -648,6 +650,11 @@ class UIController {
             const meanings = word.meanings;
             const randomMeaning = meanings[Math.floor(Math.random() * meanings.length)];
             document.getElementById('chinese-meaning').textContent = randomMeaning;
+            
+            // 显示首字母提示
+            const firstLetter = word.word.charAt(0).toUpperCase();
+            document.getElementById('hint-letter').textContent = firstLetter;
+            document.getElementById('first-letter-hint').style.display = 'block';
         }
 
         // 聚焦输入框
