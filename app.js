@@ -379,9 +379,9 @@ class UIController {
         errorMessage.style.display = 'none';
 
         if (validation.isComplete && validation.isCorrect) {
-            // 完全正确，提交答案
+            // 完全正确，立即提交答案
             inputField.classList.add('correct');
-            setTimeout(() => this.handleSubmit(), 500);
+            this.handleSubmit();
         } else if (!validation.isCorrect && input.length > 0) {
             // 字母拼写错误
             inputField.classList.add('error');
