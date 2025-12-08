@@ -21,44 +21,44 @@
 
         <!-- 练习页面 -->
         <div id="practice-tab" class="tab-content active">
-            <div class="practice-settings">
-                <h3>练习模式</h3>
-                <div class="mode-selection">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="mode-audio" checked>
-                        <span>听发音默写</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="mode-chinese" checked>
-                        <span>看中文默写</span>
-                    </label>
-                </div>
-                
-                <h3>熟练度区间</h3>
-                <div class="proficiency-range">
-                    <div class="range-inputs">
-                        <div class="range-input-group">
-                            <label for="min-proficiency">最低熟练度</label>
-                            <input type="number" id="min-proficiency" class="input input-small" value="-100" step="1">
-                        </div>
-                        <div class="range-input-group">
-                            <label for="max-proficiency">最高熟练度</label>
-                            <input type="number" id="max-proficiency" class="input input-small" value="100" step="1">
-                        </div>
+            <!-- 练习控制栏 -->
+            <div class="practice-toolbar">
+                <div class="toolbar-section">
+                    <label class="toolbar-label">练习模式</label>
+                    <div class="toolbar-controls">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="mode-audio" checked>
+                            <span>听发音</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="mode-chinese" checked>
+                            <span>看中文</span>
+                        </label>
                     </div>
-                    <div class="range-hint">只练习熟练度在此区间内的单词</div>
                 </div>
-                
-                <button id="start-practice-btn" class="btn btn-primary">开始练习</button>
+
+                <div class="toolbar-section">
+                    <label class="toolbar-label">熟练度区间</label>
+                    <div class="toolbar-controls">
+                        <input type="number" id="min-proficiency" class="input input-inline" value="-100" step="1" title="最低熟练度">
+                        <span class="toolbar-separator">~</span>
+                        <input type="number" id="max-proficiency" class="input input-inline" value="100" step="1" title="最高熟练度">
+                    </div>
+                </div>
+
+                <div class="toolbar-section">
+                    <button id="start-practice-btn" class="btn btn-primary">开始练习</button>
+                    <button id="stop-practice-btn" class="btn btn-secondary" style="display: none;">结束练习</button>
+                </div>
             </div>
 
+            <!-- 练习区域 -->
             <div id="practice-area" class="practice-area" style="display: none;">
                 <div class="practice-header">
                     <div class="practice-info">
                         <span id="current-mode-display"></span>
                         <span id="proficiency-display"></span>
                     </div>
-                    <button id="stop-practice-btn" class="btn btn-secondary">结束练习</button>
                 </div>
 
                 <div class="practice-content">

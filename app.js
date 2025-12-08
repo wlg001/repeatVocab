@@ -355,7 +355,10 @@ class UIController {
         this.practiceManager.setEnabledModes(audioMode, chineseMode);
         this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
 
-        document.querySelector('.practice-settings').style.display = 'none';
+        // 隐藏开始按钮，显示结束按钮
+        document.getElementById('start-practice-btn').style.display = 'none';
+        document.getElementById('stop-practice-btn').style.display = 'block';
+        
         document.getElementById('practice-area').style.display = 'block';
 
         this.nextWord();
@@ -363,7 +366,10 @@ class UIController {
 
     // 停止练习
     stopPractice() {
-        document.querySelector('.practice-settings').style.display = 'block';
+        // 显示开始按钮，隐藏结束按钮
+        document.getElementById('start-practice-btn').style.display = 'block';
+        document.getElementById('stop-practice-btn').style.display = 'none';
+        
         document.getElementById('practice-area').style.display = 'none';
         this.clearInput();
     }
