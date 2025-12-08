@@ -240,6 +240,7 @@ class Storage {
 class PracticeManager {
     constructor() {
         this.currentWord = null;
+        this.lastWord = null; // 上一个单词
         this.currentMode = null;
         this.consecutiveErrors = 0;
         this.currentInput = '';
@@ -583,11 +584,34 @@ class UIController {
         document.getElementById('stop-practice-btn').style.display = 'none';
         
         document.getElementById('practice-area').style.display = 'none';
+        document.getElementById('last-word-display').style.display = 'none';
         this.clearInput();
+    }
+
+    // 显示上一个单词
+    showLastWord(word) {
+        const lastWordDisplay = document.getElementById('last-word-display');
+        if (!word) {
+            lastWordDisplay.style.display = 'none';
+            return;
+        }
+        
+        const textSpan = lastWordDisplay.querySelector('.last-word-text');
+        const meaningsSpan = lastWordDisplay.querySelector('.last-word-meanings');
+        
+        textSpan.textContent = word.word;
+        meaningsSpan.textContent = word.meanings.join('；');
+        lastWordDisplay.style.display = 'block';
     }
 
     // 下一个单词
     nextWord() {
+        // 保存并显示上一个单词
+        if (this.practiceManager.currentWord) {
+            this.practiceManager.lastWord = this.practiceManager.currentWord;
+            this.showLastWord(this.practiceManager.lastWord);
+        }
+        
         const result = this.practiceManager.getNextWord();
         if (!result) {
             alert('没有可练习的单词！');

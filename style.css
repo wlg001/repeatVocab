@@ -825,6 +825,39 @@ body {
     border: 1px solid #3e3e42;
 }
 
+/* 上一个单词显示 */
+.last-word-display {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    max-width: 300px;
+}
+
+.last-word-label {
+    color: #858585;
+    font-size: 10px;
+    margin-bottom: 4px;
+}
+
+.last-word-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.last-word-text {
+    color: #4ec9b0;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.last-word-meanings {
+    color: #ce9178;
+    font-size: 11px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .container {
