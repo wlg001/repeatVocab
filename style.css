@@ -21,6 +21,24 @@ body {
     flex-direction: column;
 }
 
+/* 同步状态提示 */
+.sync-status {
+    background: #2d2d30;
+    color: #9cdcfe;
+    padding: 6px 20px;
+    font-size: 11px;
+    text-align: center;
+    border-bottom: 1px solid #3e3e42;
+}
+
+.sync-status.success {
+    color: #4ec9b0;
+}
+
+.sync-status.warning {
+    color: #ce9178;
+}
+
 /* 第一标题栏：主导航 */
 .main-header {
     background: #2d2d30;

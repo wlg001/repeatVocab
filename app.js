@@ -2,16 +2,108 @@
 class Storage {
     static STORAGE_KEY = 'vocabApp_words';
     static PRACTICE_LOG_KEY = 'vocabApp_practiceLog';
+    
+    // 初始化：从localStorage迁移数据到chrome.storage.sync
+    static async initialize() {
+        const statusEl = document.getElementById('sync-status');
+        
+        // 检测浏览器同步存储是否可用
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+            console.log('✓ 浏览器同步存储可用 - 数据将自动同步到云端');
+            
+            if (statusEl) {
+                statusEl.textContent = '☁️ 浏览器同步已启用 - 数据将自动同步';
+                statusEl.className = 'sync-status success';
+                statusEl.style.display = 'block';
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
+            }
+            
+            // 检查是否需要从localStorage迁移数据
+            const localWords = localStorage.getItem(this.STORAGE_KEY);
+            const localLog = localStorage.getItem(this.PRACTICE_LOG_KEY);
+            
+            if (localWords || localLog) {
+                return new Promise((resolve) => {
+                    // 从chrome.storage.sync读取
+                    chrome.storage.sync.get([this.STORAGE_KEY, this.PRACTICE_LOG_KEY], (syncData) => {
+                        // 如果云端没有数据，迁移本地数据
+                        if (!syncData[this.STORAGE_KEY] && localWords) {
+                            chrome.storage.sync.set({ [this.STORAGE_KEY]: localWords });
+                            console.log('✓ 单词数据已迁移到云端');
+                        }
+                        if (!syncData[this.PRACTICE_LOG_KEY] && localLog) {
+                            chrome.storage.sync.set({ [this.PRACTICE_LOG_KEY]: localLog });
+                            console.log('✓ 练习日志已迁移到云端');
+                        }
+                        resolve();
+                    });
+                });
+            }
+        } else {
+            console.log('ℹ 使用本地存储 - 数据不会同步');
+            
+            if (statusEl) {
+                statusEl.textContent = 'ℹ️ 本地存储模式 - 请使用Chrome/Edge并登录账号以启用同步';
+                statusEl.className = 'sync-status warning';
+                statusEl.style.display = 'block';
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+    }
 
-    // 获取所有单词
+    // 获取数据（优先使用chrome.storage.sync）
+    static getData(key) {
+        return new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+                chrome.storage.sync.get([key], (result) => {
+                    if (chrome.runtime.lastError) {
+                        // 如果同步存储出错，降级到localStorage
+                        console.warn('同步存储读取失败，使用本地存储:', chrome.runtime.lastError);
+                        resolve(localStorage.getItem(key));
+                    } else {
+                        resolve(result[key] || localStorage.getItem(key));
+                    }
+                });
+            } else {
+                resolve(localStorage.getItem(key));
+            }
+        });
+    }
+
+    // 保存数据（同时保存到chrome.storage.sync和localStorage）
+    static setData(key, value) {
+        return new Promise((resolve) => {
+            // 先保存到localStorage作为备份
+            localStorage.setItem(key, value);
+            
+            // 尝试保存到chrome.storage.sync
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+                chrome.storage.sync.set({ [key]: value }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.warn('同步存储保存失败:', chrome.runtime.lastError);
+                    }
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    // 获取所有单词（同步方法）
     static getWords() {
         const data = localStorage.getItem(this.STORAGE_KEY);
         return data ? JSON.parse(data) : [];
     }
 
-    // 保存所有单词
+    // 保存所有单词（异步同步到云端）
     static saveWords(words) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(words));
+        const data = JSON.stringify(words);
+        this.setData(this.STORAGE_KEY, data);
     }
 
     // 获取练习日志
@@ -22,7 +114,8 @@ class Storage {
 
     // 保存练习日志
     static savePracticeLog(log) {
-        localStorage.setItem(this.PRACTICE_LOG_KEY, JSON.stringify(log));
+        const data = JSON.stringify(log);
+        this.setData(this.PRACTICE_LOG_KEY, data);
     }
 
     // 记录今日练习
@@ -49,17 +142,6 @@ class Storage {
         log[today].wordIds = Array.from(log[today].wordIds);
         
         this.savePracticeLog(log);
-    }
-
-    // 获取所有单词
-    static getWords() {
-        const data = localStorage.getItem(this.STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-    }
-
-    // 保存所有单词
-    static saveWords(words) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(words));
     }
 
     // 添加单词
@@ -134,7 +216,25 @@ class Storage {
             return addedDate.getTime() === today.getTime();
         });
     }
+
+    // 从云端同步数据到本地
+    static async syncFromCloud() {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+            return new Promise((resolve) => {
+                chrome.storage.sync.get([this.STORAGE_KEY, this.PRACTICE_LOG_KEY], (result) => {
+                    if (result[this.STORAGE_KEY]) {
+                        localStorage.setItem(this.STORAGE_KEY, result[this.STORAGE_KEY]);
+                    }
+                    if (result[this.PRACTICE_LOG_KEY]) {
+                        localStorage.setItem(this.PRACTICE_LOG_KEY, result[this.PRACTICE_LOG_KEY]);
+                    }
+                    resolve();
+                });
+            });
+        }
+    }
 }
+
 
 // ==================== 练习管理模块 ====================
 class PracticeManager {
@@ -1049,6 +1149,10 @@ class UIController {
 
 // ==================== 初始化应用 ====================
 let ui;
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 初始化存储并从云端同步数据
+    await Storage.initialize();
+    await Storage.syncFromCloud();
+    
     ui = new UIController();
 });
