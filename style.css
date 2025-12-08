@@ -606,19 +606,20 @@ body {
     background: #252526;
     border: 1px solid #3e3e42;
     border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 30px;
+    padding: 15px;
+    margin-bottom: 25px;
+    max-width: 600px;
 }
 
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .calendar-title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 400;
     color: #cccccc;
 }
@@ -626,14 +627,14 @@ body {
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 15px;
+    gap: 3px;
+    margin-bottom: 12px;
 }
 
 .calendar-weekday {
     text-align: center;
-    padding: 8px;
-    font-size: 12px;
+    padding: 4px 2px;
+    font-size: 11px;
     color: #858585;
     font-weight: 400;
 }
@@ -646,34 +647,46 @@ body {
     justify-content: center;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
-    border-radius: 3px;
+    border-radius: 2px;
     cursor: pointer;
-    transition: all 0.2s;
-    padding: 4px;
+    transition: all 0.15s;
+    padding: 2px;
+    min-height: 40px;
 }
 
 .calendar-day:hover {
     border-color: #007acc;
-    transform: scale(1.05);
+    transform: scale(1.08);
+    z-index: 1;
 }
 
 .calendar-day.other-month {
-    opacity: 0.3;
+    opacity: 0.2;
+    cursor: default;
+}
+
+.calendar-day.other-month:hover {
+    transform: none;
+    border-color: #3e3e42;
 }
 
 .calendar-day.today {
     border: 2px solid #007acc;
+    box-shadow: 0 0 4px rgba(0, 122, 204, 0.4);
 }
 
 .day-number {
-    font-size: 12px;
+    font-size: 11px;
     color: #cccccc;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    line-height: 1;
 }
 
 .day-practice-count {
-    font-size: 10px;
-    color: #858585;
+    font-size: 9px;
+    color: #9cdcfe;
+    line-height: 1.2;
+    text-align: center;
 }
 
 /* 练习强度颜色 */
@@ -685,34 +698,47 @@ body {
     background: #1a3a1a;
 }
 
+.calendar-day.low-practice .day-number {
+    color: #4ec9b0;
+}
+
 .calendar-day.medium-practice {
     background: #2a5a2a;
+}
+
+.calendar-day.medium-practice .day-number {
+    color: #4ec9b0;
 }
 
 .calendar-day.high-practice {
     background: #3a7a3a;
 }
 
+.calendar-day.high-practice .day-number {
+    color: #4ec9b0;
+    font-weight: 600;
+}
+
 .calendar-legend {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
     flex-wrap: wrap;
-    padding-top: 10px;
+    padding-top: 8px;
     border-top: 1px solid #3e3e42;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
+    gap: 4px;
+    font-size: 10px;
     color: #858585;
 }
 
 .legend-color {
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     border: 1px solid #3e3e42;
     border-radius: 2px;
 }
