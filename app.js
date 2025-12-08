@@ -75,6 +75,7 @@ class PracticeManager {
         this.currentMode = null;
         this.consecutiveErrors = 0;
         this.currentInput = '';
+        this.errorRecorded = false; // 标记当前输入是否已记录错误
         this.enabledModes = {
             audio: true,
             chinese: true
@@ -105,6 +106,7 @@ class PracticeManager {
         
         this.consecutiveErrors = 0;
         this.currentInput = '';
+        this.errorRecorded = false; // 重置错误记录标记
         
         return {
             word: this.currentWord,
@@ -385,21 +387,27 @@ class UIController {
             inputField.classList.add('error');
             this.showFeedback('✗ 字母错误！请重新输入完整单词', 'error');
             
-            // 记录错误
-            const word = this.practiceManager.currentWord;
-            if (word) {
-                const updatedWord = Storage.getWordById(word.id);
-                updatedWord.proficiency -= 1;
-                updatedWord.stats.errorCount++;
-                updatedWord.stats.practiceCount++;
-                Storage.updateWord(updatedWord.id, updatedWord);
-                this.practiceManager.consecutiveErrors++;
+            // 只在第一次检测到错误时记录
+            if (!this.practiceManager.errorRecorded) {
+                const word = this.practiceManager.currentWord;
+                if (word) {
+                    const updatedWord = Storage.getWordById(word.id);
+                    updatedWord.proficiency -= 1;
+                    updatedWord.stats.errorCount++;
+                    updatedWord.stats.practiceCount++;
+                    updatedWord.stats.lastPracticeTime = new Date().toISOString();
+                    Storage.updateWord(updatedWord.id, updatedWord);
+                    this.practiceManager.consecutiveErrors++;
+                    this.practiceManager.errorRecorded = true; // 标记已记录错误
+                }
             }
             
             // 延迟清空输入，让用户看到错误提示
             setTimeout(() => {
                 this.clearInput();
                 inputField.focus();
+                // 重置错误记录标记，允许下次输入时再次记录
+                this.practiceManager.errorRecorded = false;
             }, 500);
         }
     }
