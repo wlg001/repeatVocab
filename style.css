@@ -841,6 +841,12 @@ body {
     margin-bottom: 4px;
 }
 
+.dict-hint {
+    color: #007acc;
+    font-size: 9px;
+    margin-left: 4px;
+}
+
 .last-word-content {
     display: flex;
     flex-direction: column;
@@ -851,6 +857,16 @@ body {
     color: #4ec9b0;
     font-weight: bold;
     font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-block;
+}
+
+.last-word-text:hover {
+    color: #66d9c0;
+    text-decoration: underline;
+    transform: translateX(2px);
 }
 
 .last-word-meanings {

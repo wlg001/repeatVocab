@@ -596,10 +596,14 @@ class UIController {
             return;
         }
         
-        const textSpan = lastWordDisplay.querySelector('.last-word-text');
+        const textLink = document.getElementById('last-word-link');
         const meaningsSpan = lastWordDisplay.querySelector('.last-word-meanings');
         
-        textSpan.textContent = word.word;
+        // 设置单词文本和剑桥词典链接
+        textLink.textContent = word.word;
+        textLink.href = `https://dictionary.cambridge.org/dictionary/english-chinese-simplified/${encodeURIComponent(word.word)}`;
+        textLink.title = `在剑桥词典中查看 "${word.word}"`;
+        
         meaningsSpan.textContent = word.meanings.join('；');
         lastWordDisplay.style.display = 'block';
     }
