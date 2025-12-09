@@ -7,51 +7,74 @@ class Storage {
     static async initialize() {
         const statusEl = document.getElementById('sync-status');
         
-        // 检测浏览器同步存储是否可用
+        // 检测浏览器同步存储是否可用（需要实际测试写入）
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-            console.log('✓ 浏览器同步存储可用 - 数据将自动同步到云端');
-            
-            if (statusEl) {
-                statusEl.textContent = '☁️ 浏览器同步已启用 - 数据将自动同步';
-                statusEl.className = 'sync-status success';
-                statusEl.style.display = 'block';
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
-            }
-            
-            // 检查是否需要从localStorage迁移数据
-            const localWords = localStorage.getItem(this.STORAGE_KEY);
-            const localLog = localStorage.getItem(this.PRACTICE_LOG_KEY);
-            
-            if (localWords || localLog) {
-                return new Promise((resolve) => {
-                    // 从chrome.storage.sync读取
-                    chrome.storage.sync.get([this.STORAGE_KEY, this.PRACTICE_LOG_KEY], (syncData) => {
-                        // 如果云端没有数据，迁移本地数据
-                        if (!syncData[this.STORAGE_KEY] && localWords) {
-                            chrome.storage.sync.set({ [this.STORAGE_KEY]: localWords });
-                            console.log('✓ 单词数据已迁移到云端');
+            // 尝试写入测试数据来验证同步存储是否真正可用
+            try {
+                await new Promise((resolve, reject) => {
+                    chrome.storage.sync.set({ '__test__': 'test' }, () => {
+                        if (chrome.runtime.lastError) {
+                            reject(chrome.runtime.lastError);
+                        } else {
+                            chrome.storage.sync.remove('__test__', () => {
+                                resolve();
+                            });
                         }
-                        if (!syncData[this.PRACTICE_LOG_KEY] && localLog) {
-                            chrome.storage.sync.set({ [this.PRACTICE_LOG_KEY]: localLog });
-                            console.log('✓ 练习日志已迁移到云端');
-                        }
-                        resolve();
                     });
                 });
+                
+                console.log('✓ 浏览器同步存储可用 - 数据将自动同步到云端');
+                
+                if (statusEl) {
+                    statusEl.textContent = '☁️ 浏览器同步已启用 - 数据将自动同步';
+                    statusEl.className = 'sync-status success';
+                    statusEl.style.display = 'block';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 5000);
+                }
+                
+                // 检查是否需要从localStorage迁移数据
+                const localWords = localStorage.getItem(this.STORAGE_KEY);
+                const localLog = localStorage.getItem(this.PRACTICE_LOG_KEY);
+                
+                if (localWords || localLog) {
+                    return new Promise((resolve) => {
+                        // 从chrome.storage.sync读取
+                        chrome.storage.sync.get([this.STORAGE_KEY, this.PRACTICE_LOG_KEY], (syncData) => {
+                            // 如果云端没有数据，迁移本地数据
+                            if (!syncData[this.STORAGE_KEY] && localWords) {
+                                chrome.storage.sync.set({ [this.STORAGE_KEY]: localWords });
+                                console.log('✓ 单词数据已迁移到云端');
+                            }
+                            if (!syncData[this.PRACTICE_LOG_KEY] && localLog) {
+                                chrome.storage.sync.set({ [this.PRACTICE_LOG_KEY]: localLog });
+                                console.log('✓ 练习日志已迁移到云端');
+                            }
+                            resolve();
+                        });
+                    });
+                }
+            } catch (error) {
+                // 同步存储不可用，降级到本地存储
+                console.warn('⚠ 浏览器同步存储不可用:', error.message || error);
+                this._showLocalStorageWarning(statusEl);
             }
         } else {
             console.log('ℹ 使用本地存储 - 数据不会同步');
-            
-            if (statusEl) {
-                statusEl.textContent = 'ℹ️ 本地存储模式 - 请使用Chrome/Edge并登录账号以启用同步';
-                statusEl.className = 'sync-status warning';
-                statusEl.style.display = 'block';
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
-            }
+            this._showLocalStorageWarning(statusEl);
+        }
+    }
+    
+    // 显示本地存储警告
+    static _showLocalStorageWarning(statusEl) {
+        if (statusEl) {
+            statusEl.textContent = 'ℹ️ 本地存储模式 - 请使用Chrome/Edge并登录账号以启用同步';
+            statusEl.className = 'sync-status warning';
+            statusEl.style.display = 'block';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
         }
     }
 
