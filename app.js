@@ -640,21 +640,24 @@ class UIController {
         document.getElementById('audio-mode-content').style.display = mode === 'audio' ? 'block' : 'none';
         document.getElementById('chinese-mode-content').style.display = mode === 'chinese' ? 'block' : 'none';
 
+        const inputElement = document.getElementById('word-input');
+        
         if (mode === 'audio') {
-            // 隐藏首字母提示
-            document.getElementById('first-letter-hint').style.display = 'none';
+            // 音频模式：恢复默认样式
+            inputElement.classList.remove('with-hint');
+            inputElement.placeholder = '请输入单词拼写...';
             // 自动播放一次
             setTimeout(() => this.playAudio(), 300);
         } else {
-            // 显示中文释义（随机选一个）
+            // 中文模式：显示中文释义和首字母提示
             const meanings = word.meanings;
             const randomMeaning = meanings[Math.floor(Math.random() * meanings.length)];
             document.getElementById('chinese-meaning').textContent = randomMeaning;
             
-            // 显示首字母提示
+            // 在输入框显示首字母提示
             const firstLetter = word.word.charAt(0).toUpperCase();
-            document.getElementById('hint-letter').textContent = firstLetter;
-            document.getElementById('first-letter-hint').style.display = 'block';
+            inputElement.classList.add('with-hint');
+            inputElement.placeholder = `${firstLetter}${'_'.repeat(word.word.length - 1)}`;
         }
 
         // 聚焦输入框

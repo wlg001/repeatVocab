@@ -335,30 +335,6 @@ body {
     font-family: 'Microsoft YaHei', sans-serif;
 }
 
-/* 首字母提示 */
-.first-letter-hint {
-    text-align: center;
-    margin-top: 15px;
-    padding: 10px 20px;
-    background: #2d2d30;
-    border: 1px solid #3e3e42;
-    border-radius: 4px;
-}
-
-.hint-label {
-    color: #858585;
-    font-size: 13px;
-    margin-right: 10px;
-}
-
-.hint-letter {
-    color: #569cd6;
-    font-size: 24px;
-    font-weight: bold;
-    font-family: 'Courier New', monospace;
-    letter-spacing: 2px;
-}
-
 /* 输入区域 */
 .input-area {
     margin: 30px 0;
@@ -376,6 +352,14 @@ body {
     background: #252526;
     color: #d4d4d4;
     font-family: 'Consolas', 'Monaco', monospace;
+    position: relative;
+}
+
+/* 中文模式下的首字母提示 */
+.word-input.with-hint {
+    background: linear-gradient(to right, rgba(86, 156, 214, 0.15) 0%, rgba(86, 156, 214, 0.15) 30px, #252526 30px);
+    text-align: left;
+    padding-left: 40px;
 }
 
 .word-input:focus {
