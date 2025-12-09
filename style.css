@@ -161,11 +161,11 @@ body {
 }
 
 .btn-audio {
-    background: #0e639c;
+    background: #094771;
     color: white;
     font-size: 18px;
     padding: 30px 40px;
-    border-color: #0e639c;
+    border-color: #094771;
     min-height: 120px;
     min-width: 200px;
     display: flex;
@@ -175,7 +175,7 @@ body {
 }
 
 .btn-audio:hover {
-    background: #1177bb;
+    background: #0e639c;
 }
 
 /* 练习设置 */
@@ -334,7 +334,7 @@ body {
 }
 
 .chinese-meaning {
-    font-size: 28px;
+    font-size: 22px;
     color: #d4d4d4;
     font-weight: 400;
     padding: 30px;
