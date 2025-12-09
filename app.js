@@ -58,7 +58,7 @@ class Storage {
             } catch (error) {
                 // 同步存储不可用，降级到本地存储
                 console.warn('⚠ 浏览器同步存储不可用:', error.message || error);
-                this._showLocalStorageWarning(statusEl);
+                this._showLocalStorageWarning(statusEl, error);
             }
         } else {
             console.log('ℹ 使用本地存储 - 数据不会同步');
@@ -67,14 +67,32 @@ class Storage {
     }
     
     // 显示本地存储警告
-    static _showLocalStorageWarning(statusEl) {
+    static _showLocalStorageWarning(statusEl, error = null) {
         if (statusEl) {
-            statusEl.textContent = 'ℹ️ 本地存储模式 - 请使用Chrome/Edge并登录账号以启用同步';
+            let message = 'ℹ️ 本地存储模式';
+            
+            if (error) {
+                // 根据错误信息提供具体原因
+                const errorMsg = error.message || String(error);
+                if (errorMsg.includes('MAX_WRITE_OPERATIONS')) {
+                    message += ' - 超出同步存储写入限制';
+                } else if (errorMsg.includes('QUOTA_BYTES')) {
+                    message += ' - 同步存储空间已满';
+                } else if (errorMsg.includes('access')) {
+                    message += ' - 同步存储访问被拒绝';
+                } else {
+                    message += ` - ${errorMsg}`;
+                }
+            } else {
+                message += ' - 请使用Chrome/Edge并登录账号以启用同步';
+            }
+            
+            statusEl.textContent = message;
             statusEl.className = 'sync-status warning';
             statusEl.style.display = 'block';
             setTimeout(() => {
                 statusEl.style.display = 'none';
-            }, 5000);
+            }, 8000); // 延长显示时间到8秒，便于用户看清原因
         }
     }
 
