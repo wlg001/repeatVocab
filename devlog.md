@@ -339,9 +339,89 @@
 - 中文模式：提取首字母并显示（`display: block`）
 
 **解决的问题：**
-- 消除中文释义歧义（如"bank"可能是"银行"或"河岸"）
+- 消除中文释义歧义（如“bank”可能是“银行”或“河岸”）
 - 提供适度提示，不直接给出答案
 - 符合语言学习的渐进式提示原则
+
+---
+
+### Commit 25: feat: 中文模式在输入框直接显示首字母提示（浅色底+placeholder） (ee0cdd2)
+**用户需求：** 中文模式下，不要首字母提示窗口，直接在单词拼写窗口显示首字母的浅色底
+
+**实现内容：**
+- 移除独立的first-letter-hint提示区域
+- 在中文模式下给输入框添加`with-hint`类
+- 使用CSS渐变在输入框左侧30px显示浅蓝色背景
+- placeholder显示首字母+下划线（如"A____"）
+
+**CSS变更：**
+- `.word-input.with-hint`: 添加linear-gradient背景渐变
+- 渐变范围：0-30px浅蓝色(rgba(86, 156, 214, 0.15))
+
+**JS逻辑变更：**
+- 音频模式：移除`with-hint`类，恢复默认placeholder
+- 中文模式：添加`with-hint`类，动态生成placeholder
+- placeholder格式：`${firstLetter}${'_'.repeat(word.word.length - 1)}`
+
+---
+
+### Commit 26: fix: 首字母保持原始大小写，输入框恢复居中显示 (554baae)
+**用户需求：** 首字母该大写就大写，该小写就小写。居中显示
+
+**实现内容：**
+- 移除首字母强制转大写的逻辑（`.toUpperCase()`）
+- 保持单词原始大小写：`word.charAt(0)`
+- 移除输入框左对齐样式，恢复居中显示
+- 移除`text-align: left`和额外的`padding-left`
+
+**效果：**
+- 输入框文本居中
+- 浅蓝色渐变底保留在左侧
+- 首字母显示符合原始大小写（apple显示a____，Apple显示A____）
+
+---
+
+### Commit 27: fix: 统一两种模式内容区域高度，避免输入框位置跳变 (4b72942)
+**用户需求：** 中文模式的中文框和听音模式下的播放发音框，大小一致，位置固定（目的是避免拼写输入框位置跳变，影响输入时候视觉感官）
+
+**实现内容：**
+- 为`.mode-content`设置固定最小高度120px
+- 中文释义框和音频按钮都设置`min-height: 120px`
+- 使用flexbox垂直居中对齐内容
+- 两种模式切换时，输入框位置保持稳定
+
+**CSS变更：**
+- `.mode-content`: 添加`min-height: 120px`、`display: flex`、`align-items: center`
+- `.chinese-meaning`: 添加flexbox居中、最小高度120px、最大宽度600px
+- `.btn-audio`: 增大尺寸(padding: 30px 40px)、最小高度120px、最小宽度200px
+
+**解决的问题：**
+- 消除模式切换时输入框上下跳动的问题
+- 提升输入体验，保持视觉稳定性
+
+---
+
+### Commit 28: fix: 中文释义框添加水平居中显示 (d2da126)
+**用户需求：** 中文释义框也居中显示
+
+**实现内容：**
+- 为`.chinese-meaning`添加`margin: 0 auto`
+- 实现水平居中显示
+
+---
+
+### Commit 29: style: 中文字体缩小至22px，播放按钮背景色调淡 (7c13314)
+**用户需求：** 中文显示框字体小点，播放发音框背景色淡些
+
+**实现内容：**
+- 中文释义框字体从28px缩小至22px
+- 播放发音按钮背景色从#0e639c调淡至#094771
+- hover效果相应调整：#1177bb → #0e639c
+
+**CSS变更：**
+- `.chinese-meaning`: `font-size: 28px` → `font-size: 22px`
+- `.btn-audio`: `background: #0e639c` → `background: #094771`
+- `.btn-audio:hover`: `background: #1177bb` → `background: #0e639c`
 
 ---
 
