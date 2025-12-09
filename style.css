@@ -163,9 +163,15 @@ body {
 .btn-audio {
     background: #0e639c;
     color: white;
-    font-size: 16px;
-    padding: 15px 30px;
+    font-size: 18px;
+    padding: 30px 40px;
     border-color: #0e639c;
+    min-height: 120px;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
 }
 
 .btn-audio:hover {
@@ -321,6 +327,10 @@ body {
 
 .mode-content {
     margin-bottom: 30px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .chinese-meaning {
@@ -331,7 +341,12 @@ body {
     background: #252526;
     border: 1px solid #3e3e42;
     border-radius: 4px;
-    margin: 20px 0;
+    width: 100%;
+    max-width: 600px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-family: 'Microsoft YaHei', sans-serif;
 }
 
