@@ -348,6 +348,7 @@ body {
     align-items: center;
     justify-content: center;
     font-family: 'Microsoft YaHei', sans-serif;
+    margin: 0 auto;
 }
 
 /* 输入区域 */
