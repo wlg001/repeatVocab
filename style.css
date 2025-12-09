@@ -358,8 +358,6 @@ body {
 /* 中文模式下的首字母提示 */
 .word-input.with-hint {
     background: linear-gradient(to right, rgba(86, 156, 214, 0.15) 0%, rgba(86, 156, 214, 0.15) 30px, #252526 30px);
-    text-align: left;
-    padding-left: 40px;
 }
 
 .word-input:focus {

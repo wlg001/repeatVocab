@@ -654,8 +654,8 @@ class UIController {
             const randomMeaning = meanings[Math.floor(Math.random() * meanings.length)];
             document.getElementById('chinese-meaning').textContent = randomMeaning;
             
-            // 在输入框显示首字母提示
-            const firstLetter = word.word.charAt(0).toUpperCase();
+            // 在输入框显示首字母提示（保持原始大小写）
+            const firstLetter = word.word.charAt(0);
             inputElement.classList.add('with-hint');
             inputElement.placeholder = `${firstLetter}${'_'.repeat(word.word.length - 1)}`;
         }
