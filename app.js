@@ -138,7 +138,34 @@ class Storage {
     // 获取所有单词（同步方法）
     static getWords() {
         const data = localStorage.getItem(this.STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
+        const words = data ? JSON.parse(data) : [];
+        
+        // 数据迁移：确保每个单词都有必要的字段
+        let needsSave = false;
+        words.forEach(word => {
+            // 确保有 stats 字段
+            if (!word.stats) {
+                word.stats = {
+                    practiceCount: 0,
+                    correctCount: 0,
+                    errorCount: 0,
+                    lastPracticeTime: null
+                };
+                needsSave = true;
+            }
+            // 确保有 tags 字段
+            if (!word.tags) {
+                word.tags = [];
+                needsSave = true;
+            }
+        });
+        
+        // 如果有更新，保存回去
+        if (needsSave) {
+            this.saveWords(words);
+        }
+        
+        return words;
     }
 
     // 保存所有单词（异步同步到云端）
@@ -186,12 +213,20 @@ class Storage {
     }
 
     // 添加单词
-    static addWord(word, meanings) {
+    static addWord(word, meanings, tags = []) {
         const words = this.getWords();
+        
+        // 生成唯一ID：使用时间戳+随机数确保唯一性
+        let id;
+        do {
+            id = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+        } while (words.some(w => w.id === id));
+        
         const newWord = {
-            id: Date.now().toString(),
+            id: id,
             word: word.toLowerCase().trim(),
             meanings: meanings.map(m => m.trim()),
+            tags: tags.map(t => t.trim()).filter(t => t), // 标签数组
             proficiency: -100,
             addedTime: new Date().toISOString(),
             stats: {
@@ -274,6 +309,130 @@ class Storage {
             });
         }
     }
+
+    // 获取所有标签
+    static getAllTags() {
+        const words = this.getWords();
+        const tagsSet = new Set();
+        words.forEach(word => {
+            if (word.tags && Array.isArray(word.tags)) {
+                word.tags.forEach(tag => tagsSet.add(tag));
+            }
+        });
+        return Array.from(tagsSet).sort();
+    }
+
+    // 为单词添加标签
+    static addTagToWord(wordId, tag) {
+        const word = this.getWordById(wordId);
+        if (word) {
+            if (!word.tags) word.tags = [];
+            if (!word.tags.includes(tag)) {
+                word.tags.push(tag);
+                this.updateWord(wordId, word);
+            }
+        }
+    }
+
+    // 从单词移除标签
+    static removeTagFromWord(wordId, tag) {
+        const word = this.getWordById(wordId);
+        if (word && word.tags) {
+            word.tags = word.tags.filter(t => t !== tag);
+            this.updateWord(wordId, word);
+        }
+    }
+
+    // 重命名标签
+    static renameTag(oldTag, newTag) {
+        const words = this.getWords();
+        words.forEach(word => {
+            if (word.tags && word.tags.includes(oldTag)) {
+                word.tags = word.tags.map(t => t === oldTag ? newTag : t);
+            }
+        });
+        this.saveWords(words);
+    }
+
+    // 删除标签（从所有单词中移除）
+    static deleteTag(tag) {
+        const words = this.getWords();
+        words.forEach(word => {
+            if (word.tags) {
+                word.tags = word.tags.filter(t => t !== tag);
+            }
+        });
+        this.saveWords(words);
+    }
+
+    // 按标签筛选单词
+    static getWordsByTags(tags) {
+        if (!tags || tags.length === 0) {
+            return this.getWords();
+        }
+        const words = this.getWords();
+        return words.filter(word => {
+            if (!word.tags || word.tags.length === 0) return false;
+            // 单词的标签与筛选标签有交集即返回
+            return tags.some(tag => word.tags.includes(tag));
+        });
+    }
+
+    // 从练习日志修复统计数据
+    static repairStatsFromLog() {
+        const words = this.getWords();
+        const practiceLog = this.getPracticeLog();
+        let repairedCount = 0;
+
+        // 统计每个单词在日志中出现的次数
+        const wordPracticeCount = {};
+        Object.values(practiceLog).forEach(dayLog => {
+            if (dayLog.wordIds && Array.isArray(dayLog.wordIds)) {
+                dayLog.wordIds.forEach(wordId => {
+                    wordPracticeCount[wordId] = (wordPracticeCount[wordId] || 0) + 1;
+                });
+            }
+        });
+
+        // 修复统计数据为0但日志中有记录的单词
+        words.forEach(word => {
+            if (word.stats.practiceCount === 0 && wordPracticeCount[word.id]) {
+                // 从日志中推测练习次数
+                const logCount = wordPracticeCount[word.id];
+                
+                // 根据熟练度推测正确率（熟练度变化可以反映练习情况）
+                const proficiencyChange = word.proficiency - (-100); // 假设初始是-100
+                
+                // 简单估算：熟练度每增加1点代表1次正确，每减1点代表1次错误
+                // 但练习日志记录的是天数，不是精确次数
+                // 保守估计：使用日志天数作为最小练习次数
+                word.stats.practiceCount = Math.max(logCount, Math.abs(proficiencyChange));
+                
+                if (proficiencyChange > 0) {
+                    // 熟练度提升了，说明正确次数多
+                    word.stats.correctCount = Math.ceil(word.stats.practiceCount * 0.6);
+                    word.stats.errorCount = word.stats.practiceCount - word.stats.correctCount;
+                } else if (proficiencyChange < 0) {
+                    // 熟练度下降了，说明错误次数多
+                    word.stats.errorCount = Math.ceil(word.stats.practiceCount * 0.6);
+                    word.stats.correctCount = word.stats.practiceCount - word.stats.errorCount;
+                } else {
+                    // 熟练度不变，均分
+                    word.stats.correctCount = Math.floor(word.stats.practiceCount / 2);
+                    word.stats.errorCount = word.stats.practiceCount - word.stats.correctCount;
+                }
+                
+                repairedCount++;
+            }
+        });
+
+        if (repairedCount > 0) {
+            this.saveWords(words);
+            console.log(`✓ 已修复 ${repairedCount} 个单词的统计数据`);
+        }
+
+        return repairedCount;
+    }
 }
 
 
@@ -295,6 +454,7 @@ class PracticeManager {
             max: 100
         };
         this.todayNewWordsOnly = false; // 是否只练习今日新词
+        this.tagFilter = null; // 标签过滤
     }
 
     // 获取下一个练习单词
@@ -308,6 +468,14 @@ class PracticeManager {
             // 如果没有今日新词，返回null
             if (availableWords.length === 0) return null;
             
+            // 如果设置了标签过滤，进一步筛选
+            if (this.tagFilter) {
+                availableWords = availableWords.filter(word => 
+                    word.tags && word.tags.includes(this.tagFilter)
+                );
+                if (availableWords.length === 0) return null;
+            }
+            
             // 从今日新词中按熟练度排序，取最低的20个
             const lowestWords = availableWords
                 .sort((a, b) => a.proficiency - b.proficiency)
@@ -318,10 +486,17 @@ class PracticeManager {
             this.currentWord = lowestWords[randomIndex];
         } else {
             // 获取熟练度区间内的单词
-            const wordsInRange = Storage.getWordsByProficiencyRange(
+            let wordsInRange = Storage.getWordsByProficiencyRange(
                 this.proficiencyRange.min,
                 this.proficiencyRange.max
             );
+            
+            // 如果设置了标签过滤，进一步筛选
+            if (this.tagFilter) {
+                wordsInRange = wordsInRange.filter(word => 
+                    word.tags && word.tags.includes(this.tagFilter)
+                );
+            }
             
             if (wordsInRange.length === 0) return null;
             
@@ -445,6 +620,11 @@ class PracticeManager {
     setTodayNewWordsOnly(enabled) {
         this.todayNewWordsOnly = enabled;
     }
+
+    // 设置标签过滤
+    setTagFilter(tag) {
+        this.tagFilter = tag;
+    }
 }
 
 // ==================== 发音管理模块 ====================
@@ -482,11 +662,14 @@ class UIController {
     constructor() {
         this.practiceManager = new PracticeManager();
         this.audioManager = new AudioManager();
+        this.wordListClickHandler = null; // 存储事件处理器引用
         this.init();
     }
 
     init() {
         this.bindEvents();
+        this.loadTagFilter();
+        this.loadTagList();
         this.loadWordList();
         this.updateStats();
     }
@@ -525,9 +708,62 @@ class UIController {
         document.getElementById('sort-by-proficiency').addEventListener('click', () => this.sortWordList('proficiency'));
         document.getElementById('sort-by-time').addEventListener('click', () => this.sortWordList('time'));
 
+        // 修复统计数据
+        document.getElementById('repair-stats-btn').addEventListener('click', () => this.repairStats());
+
+        // 单词列表事件委托（编辑和删除按钮）
+        // 确保只绑定一次
+        const wordListContainer = document.getElementById('word-list');
+        if (this.wordListClickHandler) {
+            wordListContainer.removeEventListener('click', this.wordListClickHandler);
+        }
+        
+        this.wordListClickHandler = (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const wordItem = button.closest('.word-item');
+            if (!wordItem) return;
+
+            const wordId = wordItem.dataset.wordId;
+            const action = button.dataset.action;
+
+            if (action === 'edit-tags') {
+                this.editWordTags(wordId);
+            } else if (action === 'delete') {
+                this.deleteWord(wordId);
+            }
+        };
+        
+        wordListContainer.addEventListener('click', this.wordListClickHandler);
+
+        // 数据导入导出
+        document.getElementById('export-data-btn').addEventListener('click', () => this.exportData());
+        document.getElementById('import-data-btn').addEventListener('click', () => {
+            document.getElementById('import-file-input').click();
+        });
+        document.getElementById('import-file-input').addEventListener('change', (e) => this.importData(e));
+
         // 日历切换月份
         document.getElementById('prev-month').addEventListener('click', () => this.prevMonth());
         document.getElementById('next-month').addEventListener('click', () => this.nextMonth());
+
+        // 高级设置展开/收起
+        document.getElementById('toggle-advanced-settings').addEventListener('click', () => this.toggleAdvancedSettings());
+    }
+
+    // 切换高级设置显示
+    toggleAdvancedSettings() {
+        const advancedSettings = document.getElementById('advanced-settings');
+        const toggleBtn = document.getElementById('toggle-advanced-settings');
+        
+        if (advancedSettings.style.display === 'none') {
+            advancedSettings.style.display = 'flex';
+            toggleBtn.textContent = '高级设置 ▲';
+        } else {
+            advancedSettings.style.display = 'none';
+            toggleBtn.textContent = '高级设置 ▼';
+        }
     }
 
     // 切换标签
@@ -552,8 +788,84 @@ class UIController {
         // 刷新对应页面的数据
         if (tabName === 'manage') {
             this.loadWordList();
+            this.loadTagList();
         } else if (tabName === 'stats') {
             this.updateStats();
+        }
+    }
+
+    // 加载标签过滤下拉框
+    loadTagFilter() {
+        const tagFilter = document.getElementById('tag-filter');
+        const allTags = Storage.getAllTags();
+        
+        // 清空现有选项（保留"全部标签"）
+        tagFilter.innerHTML = '<option>全部标签</option>';
+        
+        // 添加所有标签选项
+        allTags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            tagFilter.appendChild(option);
+        });
+    }
+
+    // 加载标签管理列表
+    loadTagList() {
+        const tagList = document.getElementById('tag-list');
+        const allTags = Storage.getAllTags();
+        
+        if (allTags.length === 0) {
+            tagList.innerHTML = '<div style="color: #888;">还没有标签</div>';
+            return;
+        }
+        
+        tagList.innerHTML = '';
+        allTags.forEach(tag => {
+            const tagItem = document.createElement('div');
+            tagItem.className = 'tag-item';
+            
+            const tagName = document.createElement('span');
+            tagName.className = 'tag-item-name';
+            tagName.textContent = tag;
+            tagName.addEventListener('click', () => this.editTagName(tag));
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'tag-item-delete';
+            deleteBtn.textContent = '×';
+            deleteBtn.addEventListener('click', () => this.deleteTag(tag));
+            
+            tagItem.appendChild(tagName);
+            tagItem.appendChild(deleteBtn);
+            tagList.appendChild(tagItem);
+        });
+    }
+
+    // 编辑标签名称
+    editTagName(oldTag) {
+        const newTag = prompt('重命名标签：', oldTag);
+        if (newTag && newTag !== oldTag && newTag.trim()) {
+            const trimmedTag = newTag.trim();
+            const allTags = Storage.getAllTags();
+            if (allTags.includes(trimmedTag)) {
+                alert('该标签已存在！');
+                return;
+            }
+            Storage.renameTag(oldTag, trimmedTag);
+            this.loadTagList();
+            this.loadTagFilter();
+            this.loadWordList();
+        }
+    }
+
+    // 删除标签
+    deleteTag(tag) {
+        if (confirm(`确定要删除标签"${tag}"吗？\n这将从所有单词中移除该标签。`)) {
+            Storage.deleteTag(tag);
+            this.loadTagList();
+            this.loadTagFilter();
+            this.loadWordList();
         }
     }
 
@@ -562,6 +874,7 @@ class UIController {
         const audioMode = document.getElementById('mode-audio').checked;
         const chineseMode = document.getElementById('mode-chinese').checked;
         const todayNewWordsOnly = document.getElementById('mode-today-new').checked;
+        const selectedTag = document.getElementById('tag-filter').value;
 
         if (!audioMode && !chineseMode) {
             alert('请至少选择一种练习模式！');
@@ -574,6 +887,11 @@ class UIController {
 
         if (isNaN(minProficiency) || isNaN(maxProficiency)) {
             alert('请输入有效的熟练度数值！');
+            return;
+        }
+
+        if (minProficiency < -9999 || minProficiency > 9999 || maxProficiency < -9999 || maxProficiency > 9999) {
+            alert('熟练度必须在 -9999 到 9999 之间！');
             return;
         }
 
@@ -608,6 +926,7 @@ class UIController {
         this.practiceManager.setEnabledModes(audioMode, chineseMode);
         this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
         this.practiceManager.setTodayNewWordsOnly(todayNewWordsOnly);
+        this.practiceManager.setTagFilter(selectedTag === '全部标签' ? null : selectedTag);
 
         // 隐藏开始按钮，显示结束按钮
         document.getElementById('start-practice-btn').style.display = 'none';
@@ -731,23 +1050,27 @@ class UIController {
             // 字母拼写错误
             inputField.classList.add('error');
             
-            // 只在第一次检测到错误时记录
+            // 只在第一次检测到错误时记录熟练度变化
             if (!this.practiceManager.errorRecorded) {
                 const word = this.practiceManager.currentWord;
                 if (word) {
-                    // 记录错误统计
+                    // 只降低熟练度，不更新统计（统计留给submitAnswer处理）
                     const updatedWord = Storage.getWordById(word.id);
                     updatedWord.proficiency -= 1;
-                    updatedWord.stats.errorCount++;
-                    updatedWord.stats.practiceCount++;
-                    updatedWord.stats.lastPracticeTime = new Date().toISOString();
                     Storage.updateWord(updatedWord.id, updatedWord);
                     this.practiceManager.consecutiveErrors++;
                     this.practiceManager.errorRecorded = true;
                     
                     // 检查是否连续错误5次
                     if (this.practiceManager.consecutiveErrors >= 5) {
-                        // 达到5次，用绿框显示正确答案3秒
+                        // 达到5次，记录一次完整的错误统计
+                        updatedWord.stats.errorCount++;
+                        updatedWord.stats.practiceCount++;
+                        updatedWord.stats.lastPracticeTime = new Date().toISOString();
+                        Storage.updateWord(updatedWord.id, updatedWord);
+                        Storage.recordTodayPractice(word.id, false);
+                        
+                        // 显示正确答案
                         this.showCorrectAnswerForError(word);
                         inputField.disabled = true;
                         this.practiceManager.resetErrors();
@@ -786,19 +1109,9 @@ class UIController {
             // 正确，显示单词和释义
             this.showCorrectAnswer();
             setTimeout(() => this.nextWord(), 1000);
-        } else {
-            // 错误
-            if (result.shouldShowAnswer) {
-                // 连续错误5次，显示答案
-                this.showFeedback(`连续错误5次！正确答案是: ${result.correctWord}`, 'error', true);
-                this.practiceManager.resetErrors();
-                setTimeout(() => this.nextWord(), 3000);
-            } else {
-                // 要求重新输入
-                this.showFeedback(`✗ 拼写错误，请重新输入 (错误${result.consecutiveErrors}次)`, 'error');
-                this.clearInput();
-            }
         }
+        // 注意：错误的情况已经在handleInput中处理了（连续错误5次）
+        // 这里只处理正确的情况
     }
 
     // 显示正确答案（拼写正确时）
@@ -868,9 +1181,11 @@ class UIController {
     addWord() {
         const wordInput = document.getElementById('new-word');
         const meaningsInput = document.getElementById('new-meanings');
+        const tagsInput = document.getElementById('new-tags');
 
         const word = wordInput.value.trim();
         const meaningsText = meaningsInput.value.trim();
+        const tagsText = tagsInput.value.trim();
 
         if (!word || !meaningsText) {
             alert('请填写完整的单词和释义！');
@@ -883,32 +1198,45 @@ class UIController {
             return;
         }
 
+        // 解析标签
+        const tags = tagsText ? tagsText.split(/[,，]/).map(t => t.trim()).filter(t => t) : [];
+
         // 检查是否已存在
         const existingWords = Storage.getWords();
         const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
         
         if (existingWord) {
-            // 单词已存在，重置熟练度为-100
-            if (confirm(`单词"${word}"已存在！是否重置熟练度为-100并更新释义？`)) {
-                existingWord.proficiency = -100;
-                existingWord.meanings = meanings;
-                Storage.updateWord(existingWord.id, existingWord);
+            // 单词已存在，重置熟练度为-100但保留统计数据
+            if (confirm(`单词"${word}"已存在！是否重置熟练度为-100并更新释义和标签？\n（注意：已有的练习统计数据将保留）`)) {
+                // 重新获取最新的单词数据
+                const wordToUpdate = Storage.getWordById(existingWord.id);
+                wordToUpdate.proficiency = -100;
+                wordToUpdate.meanings = meanings;
+                wordToUpdate.tags = tags;
+                // 保留 wordToUpdate.stats 统计数据不变
+                Storage.updateWord(wordToUpdate.id, wordToUpdate);
                 
                 wordInput.value = '';
                 meaningsInput.value = '';
+                tagsInput.value = '';
                 
                 this.loadWordList();
+                this.loadTagList();
+                this.loadTagFilter();
                 this.showFeedback('单词熟练度已重置！', 'success');
             }
             return;
         }
 
-        Storage.addWord(word, meanings);
+        Storage.addWord(word, meanings, tags);
         
         wordInput.value = '';
         meaningsInput.value = '';
+        tagsInput.value = '';
         
         this.loadWordList();
+        this.loadTagList();
+        this.loadTagFilter();
         this.showFeedback('单词添加成功！', 'success');
     }
 
@@ -923,17 +1251,19 @@ class UIController {
         }
 
         const lines = text.split('\n').filter(line => line.trim());
-        const existingWords = Storage.getWords();
-        const existingWordsSet = new Set(existingWords.map(w => w.word.toLowerCase()));
         
         let successCount = 0;
-        let skipCount = 0;
         let errorCount = 0;
         const errors = [];
 
+        // 解析所有行，准备待添加的单词数据
+        const wordsToAdd = [];
         lines.forEach((line, index) => {
-            const trimmedLine = line.trim();
+            let trimmedLine = line.trim();
             if (!trimmedLine) return;
+
+            // 合并多个连续空格为一个空格
+            trimmedLine = trimmedLine.replace(/\s+/g, ' ');
 
             // 分割单词和释义（使用空格分隔）
             const firstSpaceIndex = trimmedLine.indexOf(' ');
@@ -944,12 +1274,21 @@ class UIController {
             }
 
             const word = trimmedLine.substring(0, firstSpaceIndex).trim();
-            const meaningsText = trimmedLine.substring(firstSpaceIndex + 1).trim();
+            let remainingText = trimmedLine.substring(firstSpaceIndex + 1).trim();
 
-            if (!word || !meaningsText) {
+            if (!word || !remainingText) {
                 errorCount++;
                 errors.push(`第${index + 1}行：单词或释义为空`);
                 return;
+            }
+
+            // 尝试解析标签（格式：meanings [tag1,tag2]）
+            let meaningsText = remainingText;
+            let tags = [];
+            const tagMatch = remainingText.match(/^(.+?)\s*\[([^\]]+)\]$/);
+            if (tagMatch) {
+                meaningsText = tagMatch[1].trim();
+                tags = tagMatch[2].split(/[,，]/).map(t => t.trim()).filter(t => t);
             }
 
             // 解析释义（支持逗号分隔）
@@ -960,27 +1299,36 @@ class UIController {
                 return;
             }
 
-            // 检查是否已存在
-            if (existingWordsSet.has(word.toLowerCase())) {
-                // 单词已存在，重置熟练度
-                const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
-                if (existingWord) {
-                    existingWord.proficiency = -100;
-                    existingWord.meanings = meanings;
-                    Storage.updateWord(existingWord.id, existingWord);
-                    successCount++;
-                }
+            wordsToAdd.push({ word, meanings, tags, lineNumber: index + 1 });
+        });
+
+        // 逐个添加单词（完全模拟 addWord 方法的逻辑）
+        wordsToAdd.forEach(item => {
+            const { word, meanings, tags, lineNumber } = item;
+            
+            // 检查是否已存在（每次都重新获取最新数据）
+            const existingWords = Storage.getWords();
+            const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
+            
+            if (existingWord) {
+                // 单词已存在，重置熟练度但保留统计数据（与 addWord 相同逻辑）
+                const wordToUpdate = Storage.getWordById(existingWord.id);
+                wordToUpdate.proficiency = -100;
+                wordToUpdate.meanings = meanings;
+                wordToUpdate.tags = tags;
+                // 保留 wordToUpdate.stats 统计数据不变
+                Storage.updateWord(wordToUpdate.id, wordToUpdate);
+                successCount++;
                 return;
             }
 
-            // 添加单词
+            // 添加新单词（与 addWord 相同逻辑）
             try {
-                Storage.addWord(word, meanings);
-                existingWordsSet.add(word.toLowerCase());
+                Storage.addWord(word, meanings, tags);
                 successCount++;
             } catch (error) {
                 errorCount++;
-                errors.push(`第${index + 1}行：添加失败 - ${error.message}`);
+                errors.push(`第${lineNumber}行：添加失败 - ${error.message}`);
             }
         });
 
@@ -998,6 +1346,8 @@ class UIController {
         if (successCount > 0) {
             bulkInput.value = '';
             this.loadWordList();
+            this.loadTagList();
+            this.loadTagFilter();
             this.updateStats();
         }
     }
@@ -1029,11 +1379,20 @@ class UIController {
                 month: '2-digit',
                 day: '2-digit'
             });
+            
+            // 渲染标签
+            const tagsHtml = word.tags && word.tags.length > 0 
+                ? `<div class="word-tags">
+                    ${word.tags.map(tag => `<span class="word-tag">${tag}</span>`).join('')}
+                   </div>`
+                : '';
+            
             return `
-            <div class="word-item">
+            <div class="word-item" data-word-id="${word.id}">
                 <div class="word-info">
                     <div class="word-title">${word.word}</div>
                     <div class="word-meanings">${word.meanings.join(', ')}</div>
+                    ${tagsHtml}
                     <div class="word-meta">
                         加入时间: ${addedDate} | 
                         练习: ${word.stats.practiceCount}次 | 
@@ -1043,11 +1402,14 @@ class UIController {
                 </div>
                 <div class="word-proficiency">${word.proficiency}</div>
                 <div class="word-actions">
-                    <button class="btn btn-delete" onclick="ui.deleteWord('${word.id}')">删除</button>
+                    <button class="btn btn-edit" data-action="edit-tags">编辑标签</button>
+                    <button class="btn btn-delete" data-action="delete">删除</button>
                 </div>
             </div>
         `;
         }).join('');
+        
+        // 注意：事件委托已在 bindEvents() 中绑定，这里不需要重复绑定
     }
 
     // 排序单词列表
@@ -1055,13 +1417,117 @@ class UIController {
         this.loadWordList(sortBy);
     }
 
+    // 编辑单词标签
+    editWordTags(id) {
+        const word = Storage.getWordById(id);
+        if (!word) return;
+        
+        const currentTags = word.tags && word.tags.length > 0 ? word.tags.join(',') : '';
+        const newTagsText = prompt(`编辑单词"${word.word}"的标签（用逗号分隔）：`, currentTags);
+        
+        if (newTagsText !== null) {
+            const newTags = newTagsText ? newTagsText.split(/[,，]/).map(t => t.trim()).filter(t => t) : [];
+            word.tags = newTags;
+            Storage.updateWord(id, word);
+            this.loadWordList();
+            this.loadTagList();
+            this.loadTagFilter();
+            this.showFeedback('标签已更新！', 'success');
+        }
+    }
+
     // 删除单词
     deleteWord(id) {
-        if (confirm('确定要删除这个单词吗？')) {
-            Storage.deleteWord(id);
-            this.loadWordList();
-            this.updateStats();
+        Storage.deleteWord(id);
+        this.loadWordList();
+        this.loadTagList();
+        this.loadTagFilter();
+        this.updateStats();
+    }
+
+    // 修复统计数据
+    repairStats() {
+        if (confirm('将尝试从练习日志中恢复统计数据。\n此操作会覆盖当前统计为0的单词数据。\n是否继续？')) {
+            const repairedCount = Storage.repairStatsFromLog();
+            
+            if (repairedCount > 0) {
+                this.loadWordList();
+                this.updateStats();
+                alert(`成功修复 ${repairedCount} 个单词的统计数据！\n\n注意：修复的数据是根据练习日志和熟练度变化估算的，可能不完全准确。`);
+            } else {
+                alert('没有需要修复的数据。\n所有单词的统计数据都已正常记录。');
+            }
         }
+    }
+
+    // 导出数据
+    exportData() {
+        const data = {
+            words: Storage.getWords(),
+            practiceLog: Storage.getPracticeLog(),
+            exportTime: new Date().toISOString(),
+            version: '1.0'
+        };
+
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `单词数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.showFeedback('数据导出成功！', 'success');
+    }
+
+    // 导入数据
+    importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                if (!data.words || !Array.isArray(data.words)) {
+                    alert('数据格式错误！');
+                    return;
+                }
+
+                if (Storage.getWords().length > 0) {
+                    if (!confirm('导入数据将覆盖当前所有数据，是否继续？')) {
+                        return;
+                    }
+                }
+
+                // 导入单词数据
+                Storage.saveWords(data.words);
+                
+                // 导入练习日志（如果有）
+                if (data.practiceLog) {
+                    Storage.savePracticeLog(data.practiceLog);
+                }
+
+                // 刷新界面
+                this.loadWordList();
+                this.loadTagList();
+                this.loadTagFilter();
+                this.updateStats();
+                
+                alert(`导入成功！\n共导入 ${data.words.length} 个单词\n导出时间: ${new Date(data.exportTime).toLocaleString('zh-CN')}`);
+            } catch (error) {
+                alert('数据解析失败！请确保文件格式正确。\n错误: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+        
+        // 重置文件选择，允许重复选择同一文件
+        event.target.value = '';
     }
 
     // 更新统计

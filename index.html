@@ -38,19 +38,34 @@
                 </div>
 
                 <div class="toolbar-section">
-                    <label class="toolbar-label">熟练度区间</label>
-                    <div class="toolbar-controls">
-                        <input type="number" id="min-proficiency" class="input input-inline" value="-100" step="1" title="最低熟练度">
-                        <span class="toolbar-separator">~</span>
-                        <input type="number" id="max-proficiency" class="input input-inline" value="100" step="1" title="最高熟练度">
-                    </div>
+                    <button id="toggle-advanced-settings" class="btn btn-secondary" style="font-size: 12px; padding: 4px 12px;">高级设置 ▼</button>
                 </div>
 
-                <div class="toolbar-section">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="mode-today-new">
-                        <span>今日新词练习</span>
-                    </label>
+                <div id="advanced-settings" style="display: none;">
+                    <div class="toolbar-section">
+                        <label class="toolbar-label">熟练度区间</label>
+                        <div class="toolbar-controls">
+                            <input type="number" id="min-proficiency" class="input input-inline" value="-100" step="1" min="-9999" max="9999" title="最低熟练度">
+                            <span style="margin: 0 5px;">~</span>
+                            <input type="number" id="max-proficiency" class="input input-inline" value="100" step="1" min="-9999" max="9999" title="最高熟练度">
+                        </div>
+                    </div>
+
+                    <div class="toolbar-section">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="mode-today-new">
+                            <span>今日新词练习</span>
+                        </label>
+                    </div>
+
+                    <div class="toolbar-section">
+                        <label class="toolbar-label">标签筛选</label>
+                        <div class="toolbar-controls">
+                            <select id="tag-filter" class="input input-inline" style="min-width: 150px;">
+                                <option value="">全部标签</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="toolbar-section">
@@ -143,7 +158,16 @@
                     <label for="new-meanings">中文释义（多个释义用逗号分隔）</label>
                     <input type="text" id="new-meanings" class="input" placeholder="例如: 示例,例子">
                 </div>
+                <div class="form-group">
+                    <label for="new-tags">标签（多个标签用逗号分隔，可选）</label>
+                    <input type="text" id="new-tags" class="input" placeholder="例如: CET4,重点,动词">
+                </div>
                 <button id="add-word-btn" class="btn btn-primary">添加单词</button>
+            </div>
+
+            <div class="add-word-section">
+                <h3>标签管理</h3>
+                <div id="tag-list" class="tag-management-list"></div>
             </div>
 
             <div class="word-list-section">
@@ -151,6 +175,10 @@
                 <div class="word-list-controls">
                     <button id="sort-by-proficiency" class="btn btn-small">按熟练度排序</button>
                     <button id="sort-by-time" class="btn btn-small">按添加时间排序</button>
+                    <button id="repair-stats-btn" class="btn btn-small" style="background: #4ec9b0; margin-left: auto;">修复统计数据</button>
+                    <button id="export-data-btn" class="btn btn-small">导出数据</button>
+                    <button id="import-data-btn" class="btn btn-small">导入数据</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 </div>
                 <div id="word-list" class="word-list"></div>
             </div>

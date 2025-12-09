@@ -226,6 +226,12 @@ body {
     gap: 10px;
 }
 
+#advanced-settings {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 .toolbar-separator {
     color: #858585;
     padding: 0 5px;
@@ -501,6 +507,48 @@ body {
     line-height: 1.5;
 }
 
+/* 标签管理 */
+.tag-management-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    padding: 10px;
+    background: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+}
+
+.tag-item {
+    background: #094771;
+    color: #9cdcfe;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag-item-name {
+    cursor: pointer;
+}
+
+.tag-item-name:hover {
+    text-decoration: underline;
+}
+
+.tag-item-delete {
+    color: #f48771;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.tag-item-delete:hover {
+    color: #ff6b6b;
+}
+
 .word-list-section h3 {
     display: flex;
     align-items: center;
@@ -578,7 +626,23 @@ body {
 .word-meanings {
     color: #ce9178;
     font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.word-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
     margin-bottom: 4px;
+}
+
+.word-tag {
+    background: #094771;
+    color: #9cdcfe;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
 }
 
 .word-meta {
@@ -596,6 +660,20 @@ body {
 .word-actions {
     display: flex;
     gap: 10px;
+}
+
+.btn-edit {
+    background: #3e3e42;
+    color: #4ec9b0;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-color: #3e3e42;
+}
+
+.btn-edit:hover {
+    background: #4ec9b0;
+    color: #1e1e1e;
+    border-color: #4ec9b0;
 }
 
 .btn-delete {
