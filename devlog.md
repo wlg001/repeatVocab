@@ -536,6 +536,33 @@ handleGlobalKeyboard(e) {
 
 ---
 
+### Commit 35: feat: 中文模式下Alt键也可播放发音作为提示 (4356aeb)
+**用户需求：** 中文模式下按Alt也可以听单词发音，作为提示用
+
+**实现内容：**
+- 移除 Alt 键只在听音模式下生效的限制
+- 简化条件判断：只要有当前单词即可播放发音
+- 听音模式：按 Alt 重听发音
+- 中文模式：按 Alt 听发音作为提示
+
+**代码变更：**
+```javascript
+// 修改前
+if (e.key === 'Alt' && 
+    this.practiceManager.currentWord && 
+    this.practiceManager.currentMode === 'audio') {
+    
+// 修改后
+if (e.key === 'Alt' && this.practiceManager.currentWord) {
+```
+
+**用户体验提升：**
+- ✅ 中文模式下可通过发音辅助记忆
+- ✅ 统一快捷键行为，降低认知负担
+- ✅ 代码更简洁清晰
+
+---
+
 ## 功能总结
 
 ### 已实现功能
