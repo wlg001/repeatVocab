@@ -478,6 +478,64 @@
 
 ---
 
+### Commit 33: fix: 修复批量添加单词ID重复导致删除多个单词的问题 (e59450b)
+**用户需求：** 批量添加单词后，删除单词时会随机删除多个单词
+
+**问题根源：**
+- 批量添加时使用 `Date.now()` 生成 ID
+- 在毫秒级时间内添加多个单词时会产生重复 ID
+- 导致多个单词拥有相同的 ID，删除时会全部删除
+
+**实现内容：**
+- 改用 `时间戳-随机字符串` 格式生成唯一 ID
+- 格式：`Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9)`
+- 使用 `do-while` 循环确保 ID 不与现有单词重复
+- 批量导入时合并连续空格（`trimmedLine.replace(/\s+/g, ' ')`）
+- 移除所有调试用的 console.log 语句
+
+**代码变更：**
+- `Storage.addWord()`: ID生成逻辑从 `Date.now().toString()` 改为带随机数的唯一ID
+- `bulkImport()`: 添加空格合并预处理
+
+**问题解决：**
+- ✅ 每个单词都有唯一 ID
+- ✅ 删除操作只删除指定单词
+- ✅ 批量添加不再产生ID冲突
+
+---
+
+### Commit 34: feat: 添加Alt键快捷键重新播放发音 (ab938fd)
+**用户需求：** 听音模式下，按Alt键可以重新播放单词发音，避免手离开键盘使用鼠标
+
+**实现内容：**
+- 在 `bindEvents()` 中添加全局键盘事件监听器
+- 新增 `handleGlobalKeyboard(e)` 方法处理快捷键
+- Alt 键仅在听音模式且正在练习时生效
+- 使用 `e.preventDefault()` 阻止 Alt 键的默认行为（打开菜单栏）
+
+**代码变更：**
+```javascript
+// bindEvents() 末尾添加
+document.addEventListener('keydown', (e) => this.handleGlobalKeyboard(e));
+
+// 新增方法
+handleGlobalKeyboard(e) {
+    if (e.key === 'Alt' && 
+        this.practiceManager.currentWord && 
+        this.practiceManager.currentMode === 'audio') {
+        e.preventDefault();
+        this.playAudio();
+    }
+}
+```
+
+**用户体验提升：**
+- ✅ 无需离开键盘使用鼠标
+- ✅ 提高练习流畅性
+- ✅ 快捷键仅在合适场景生效，不影响其他操作
+
+---
+
 ## 功能总结
 
 ### 已实现功能
