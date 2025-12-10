@@ -750,6 +750,9 @@ class UIController {
 
         // 高级设置展开/收起
         document.getElementById('toggle-advanced-settings').addEventListener('click', () => this.toggleAdvancedSettings());
+        
+        // 全局键盘快捷键
+        document.addEventListener('keydown', (e) => this.handleGlobalKeyboard(e));
     }
 
     // 切换高级设置显示
@@ -763,6 +766,17 @@ class UIController {
         } else {
             advancedSettings.style.display = 'none';
             toggleBtn.textContent = '高级设置 ▼';
+        }
+    }
+
+    // 处理全局键盘快捷键
+    handleGlobalKeyboard(e) {
+        // Alt 键：重新播放发音（仅在听音模式下且正在练习时）
+        if (e.key === 'Alt' && 
+            this.practiceManager.currentWord && 
+            this.practiceManager.currentMode === 'audio') {
+            e.preventDefault();
+            this.playAudio();
         }
     }
 
