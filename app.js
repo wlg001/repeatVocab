@@ -771,10 +771,8 @@ class UIController {
 
     // 处理全局键盘快捷键
     handleGlobalKeyboard(e) {
-        // Alt 键：重新播放发音（仅在听音模式下且正在练习时）
-        if (e.key === 'Alt' && 
-            this.practiceManager.currentWord && 
-            this.practiceManager.currentMode === 'audio') {
+        // Alt 键：播放发音（听音模式重听，中文模式作为提示）
+        if (e.key === 'Alt' && this.practiceManager.currentWord) {
             e.preventDefault();
             this.playAudio();
         }
