@@ -187,42 +187,55 @@
 
         <!-- 句子管理页面 -->
         <div id="sentence-tab" class="tab-content">
-            <h3>批量导入句子</h3>
-            <p class="import-tip">格式：英文句子|中文翻译 [标签1,标签2]（标签可选）</p>
-            <textarea 
-                id="bulk-sentence-import" 
-                class="textarea" 
-                placeholder="Hello, how are you?|你好，最近怎么样？ [日常,问候]&#10;I like programming.|我喜欢编程。 [兴趣]&#10;What's your name?|你叫什么名字？"
-                rows="6">
-            </textarea>
-            <div style="margin-top: 10px;">
+            <div class="add-word-section">
+                <h3>批量导入句子</h3>
+                <div class="form-group">
+                    <label for="bulk-sentence-import">
+                        一行一个句子，格式：英文句子|中文翻译 [标签1,标签2]
+                        <span style="color: #858585; font-size: 11px; margin-left: 10px;">
+                            标签可选
+                        </span>
+                    </label>
+                    <textarea 
+                        id="bulk-sentence-import" 
+                        class="input textarea" 
+                        rows="10" 
+                        placeholder="Hello, how are you?|你好，最近怎么样？ [日常,问候]&#10;I like programming.|我喜欢编程。 [兴趣]&#10;What's your name?|你叫什么名字？">
+                    </textarea>
+                </div>
                 <button id="bulk-sentence-import-btn" class="btn btn-primary">批量导入</button>
             </div>
 
-            <h3 style="margin-top: 30px;">添加单个句子</h3>
-            <div class="form-group">
-                <label for="new-sentence-english">英文句子：</label>
-                <input type="text" id="new-sentence-english" class="input" placeholder="输入英文句子">
+            <div class="add-word-section">
+                <h3>添加单个句子</h3>
+                <div class="form-group">
+                    <label for="new-sentence-english">英文句子</label>
+                    <input type="text" id="new-sentence-english" class="input" placeholder="例如: Hello, how are you?">
+                </div>
+                <div class="form-group">
+                    <label for="new-sentence-chinese">中文翻译</label>
+                    <input type="text" id="new-sentence-chinese" class="input" placeholder="例如: 你好，最近怎么样？">
+                </div>
+                <div class="form-group">
+                    <label for="new-sentence-tags">标签（多个标签用逗号分隔，可选）</label>
+                    <input type="text" id="new-sentence-tags" class="input" placeholder="例如: 日常,问候">
+                </div>
+                <button id="add-sentence-btn" class="btn btn-primary">添加句子</button>
             </div>
-            <div class="form-group">
-                <label for="new-sentence-chinese">中文翻译：</label>
-                <input type="text" id="new-sentence-chinese" class="input" placeholder="输入中文翻译">
-            </div>
-            <div class="form-group">
-                <label for="new-sentence-tags">标签（用逗号分隔）：</label>
-                <input type="text" id="new-sentence-tags" class="input" placeholder="例如：日常,问候">
-            </div>
-            <button id="add-sentence-btn" class="btn btn-primary">添加句子</button>
 
-            <h3 style="margin-top: 30px;">句子列表 (<span id="sentence-count">0</span>)</h3>
-            <div style="margin-bottom: 10px;">
-                <button id="sort-sentence-by-proficiency" class="btn btn-secondary">按熟练度排序</button>
-                <button id="sort-sentence-by-time" class="btn btn-secondary">按时间排序</button>
-                <button id="export-sentence-data-btn" class="btn btn-secondary">导出句子</button>
-                <button id="import-sentence-data-btn" class="btn btn-secondary">导入句子</button>
-                <input type="file" id="import-sentence-file-input" accept=".json" style="display: none;">
+            <div class="word-list-section">
+                <div class="word-list-header">
+                    <h3>句子列表 (<span id="sentence-count">0</span>)</h3>
+                    <div class="word-list-actions">
+                        <button id="sort-sentence-by-proficiency" class="btn btn-secondary">按熟练度排序</button>
+                        <button id="sort-sentence-by-time" class="btn btn-secondary">按时间排序</button>
+                        <button id="export-sentence-data-btn" class="btn btn-secondary">导出句子</button>
+                        <button id="import-sentence-data-btn" class="btn btn-secondary">导入句子</button>
+                        <input type="file" id="import-sentence-file-input" accept=".json" style="display: none;">
+                    </div>
+                </div>
+                <div id="sentence-list" class="word-list"></div>
             </div>
-            <div id="sentence-list" class="word-list"></div>
         </div>
 
         <!-- 统计页面 -->

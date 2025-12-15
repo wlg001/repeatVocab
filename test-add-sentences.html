@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>添加测试句子</title>
+</head>
+<body>
+    <h1>添加测试句子</h1>
+    <button onclick="addTestSentences()">添加测试句子到LocalStorage</button>
+    <button onclick="clearSentences()">清空所有句子</button>
+    <div id="result"></div>
+
+    <script>
+        function addTestSentences() {
+            const testSentences = [
+                {
+                    id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                    english: "Hello, how are you?",
+                    chinese: "你好，最近怎么样？",
+                    tags: ["日常", "问候"],
+                    proficiency: -100,
+                    addedTime: new Date().toISOString(),
+                    stats: {
+                        practiceCount: 0,
+                        correctCount: 0,
+                        errorCount: 0,
+                        lastPracticeTime: null
+                    }
+                },
+                {
+                    id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                    english: "I like programming.",
+                    chinese: "我喜欢编程。",
+                    tags: ["兴趣"],
+                    proficiency: -98,
+                    addedTime: new Date().toISOString(),
+                    stats: {
+                        practiceCount: 2,
+                        correctCount: 2,
+                        errorCount: 0,
+                        lastPracticeTime: new Date().toISOString()
+                    }
+                },
+                {
+                    id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                    english: "What's your name?",
+                    chinese: "你叫什么名字？",
+                    tags: ["日常"],
+                    proficiency: -95,
+                    addedTime: new Date().toISOString(),
+                    stats: {
+                        practiceCount: 5,
+                        correctCount: 5,
+                        errorCount: 0,
+                        lastPracticeTime: new Date().toISOString()
+                    }
+                },
+                {
+                    id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                    english: "Good morning, everyone!",
+                    chinese: "大家早上好！",
+                    tags: ["日常", "问候"],
+                    proficiency: -100,
+                    addedTime: new Date().toISOString(),
+                    stats: {
+                        practiceCount: 0,
+                        correctCount: 0,
+                        errorCount: 0,
+                        lastPracticeTime: null
+                    }
+                },
+                {
+                    id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                    english: "Can you help me with this problem?",
+                    chinese: "你能帮我解决这个问题吗？",
+                    tags: ["日常", "求助"],
+                    proficiency: -97,
+                    addedTime: new Date().toISOString(),
+                    stats: {
+                        practiceCount: 3,
+                        correctCount: 3,
+                        errorCount: 0,
+                        lastPracticeTime: new Date().toISOString()
+                    }
+                }
+            ];
+
+            localStorage.setItem('vocabApp_sentences', JSON.stringify(testSentences));
+            document.getElementById('result').innerHTML = `<p style="color: green;">✅ 成功添加 ${testSentences.length} 个测试句子！请刷新主页面查看。</p>`;
+        }
+
+        function clearSentences() {
+            localStorage.removeItem('vocabApp_sentences');
+            localStorage.removeItem('vocabApp_sentencePracticeLog');
+            document.getElementById('result').innerHTML = '<p style="color: orange;">🗑️ 已清空所有句子数据。</p>';
+        }
+    </script>
+</body>
+</html>

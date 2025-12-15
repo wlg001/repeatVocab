@@ -840,6 +840,40 @@ What's your name?|你叫什么名字？
 
 ---
 
+### Commit 37: fix: 修复句子管理页面空白问题 (b9d519c)
+**问题描述：** 句子管理Tab切换后页面完全空白
+
+**问题原因：** HTML中 `#sentence-tab` 元素有行内样式 `style="display: none;"`，覆盖了JavaScript切换时添加的 `.active` 类的 `display: block` 样式
+
+**解决方案：** 移除 `#sentence-tab` 的行内 `display: none` 样式，依赖CSS类控制显示/隐藏
+
+**代码变更：**
+- `index.html`: 删除 `<div id="sentence-tab" class="tab-content" style="display: none;">` 的行内样式
+
+---
+
+### Commit 38: ui: 优化句子管理页面布局，统一界面风格
+**用户需求：** 批量导入句子的框太小，对话框风格需参考单词管理页面
+
+**实现内容：**
+- 增大批量导入textarea行数（6行 → 10行）
+- 统一使用 `add-word-section` 类包装表单区域
+- 统一使用 `form-group` 类格式化表单项
+- 统一label说明样式（灰色小字提示）
+- 统一placeholder格式（"例如: ..."）
+- 使用 `word-list-section` 和 `word-list-header` 类统一列表区域
+- 将按钮组移至 `word-list-actions` 容器
+
+**代码变更：**
+- `index.html`: 重构句子管理Tab的HTML结构，与单词管理Tab保持一致
+
+**用户体验提升：**
+- ✅ 界面风格统一，降低学习成本
+- ✅ 批量导入输入框更大，方便输入多行句子
+- ✅ 表单布局更清晰，标签提示更友好
+
+---
+
 ### 下一步计划（阶段二继续）
 1. 实现句子练习界面
 2. 扩展统计功能（分开显示单词和句子）
