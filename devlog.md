@@ -601,6 +601,248 @@ if (e.key === 'Alt' && this.practiceManager.currentWord) {
 - ✅ 事件监听器累积导致多次删除
 - ✅ 数据迁移保留历史统计数据
 
-### 下一步计划（阶段二）
-- 待定
+---
+
+## 📌 阶段二开发周期：2025-12-15 开始 🚧
+
+---
+
+## 2025-12-15
+
+### Commit 36: feat: 添加句子练习模块（阶段二-基础功能）(dc68a07)
+**用户需求：** 新增句子练习模块，支持导入英文句子和中文翻译，按行输入，格式：英文|中文
+
+**设计决策：**
+- UI布局：新增第4个Tab（练习/单词管理/句子管理/统计）
+- 练习模式：仅"看中文→输入英文句子"
+- 拼写检查：严格模式，忽略标点符号（.,!?;:'"()[]{}）
+- 错误提示：连续错误5次后显示答案
+- 标签系统：与单词共享标签池，支持 `[标签1,标签2]` 语法
+- 统计功能：日历分开显示单词和句子练习
+- 技术架构：新增 `SentencePracticeManager` 类
+
+**实现内容：**
+
+#### 1. 数据层扩展（Storage类）
+- 新增存储键：
+  - `SENTENCE_KEY = 'vocabApp_sentences'`（句子数据）
+  - `SENTENCE_LOG_KEY = 'vocabApp_sentencePracticeLog'`（练习日志）
+  
+- 句子CRUD方法：
+  - `getSentences()` - 获取所有句子，自动数据迁移
+  - `saveSentences(sentences)` - 保存句子数据
+  - `addSentence(english, chinese, tags)` - 添加句子（唯一ID生成）
+  - `updateSentence(id, updates)` - 更新句子
+  - `deleteSentence(id)` - 删除句子
+  - `getSentenceById(id)` - 通过ID获取句子
+  
+- 查询和筛选方法：
+  - `getLowestProficiencySentences(n)` - 获取熟练度最低的N个句子
+  - `getSentencesByProficiencyRange(min, max)` - 按熟练度区间筛选
+  - `getTodayNewSentences()` - 获取今日新增句子
+  - `getSentencesByTags(tags)` - 按标签筛选句子
+  
+- 练习日志方法：
+  - `getSentencePracticeLog()` - 获取练习日志
+  - `saveSentencePracticeLog(log)` - 保存练习日志
+  - `recordTodaySentencePractice(sentenceId, isCorrect)` - 记录今日练习
+
+#### 2. 句子数据模型
+```javascript
+{
+    id: "timestamp-randomstring",      // 唯一ID
+    english: "Hello, how are you?",    // 英文句子
+    chinese: "你好，最近怎么样？",      // 中文翻译
+    tags: ["日常", "问候"],            // 标签数组（与单词共享）
+    proficiency: -100,                 // 熟练度（-100起始）
+    addedTime: "2025-12-15T10:30:00Z", // 添加时间
+    stats: {
+        practiceCount: 0,    // 练习次数
+        correctCount: 0,     // 正确次数
+        errorCount: 0,       // 错误次数
+        lastPracticeTime: null
+    }
+}
+```
+
+#### 3. 练习管理类（SentencePracticeManager）
+- 属性：
+  - `currentSentence` - 当前句子
+  - `lastSentence` - 上一个句子
+  - `proficiencyRange` - 熟练度区间
+  - `todayNewSentencesOnly` - 今日新句子模式
+  - `consecutiveErrors` - 连续错误计数
+  - `tagFilter` - 标签筛选
+  
+- 方法：
+  - `setProficiencyRange(min, max)` - 设置熟练度区间
+  - `setTodayNewSentencesOnly(enabled)` - 设置今日新句子模式
+  - `setTagFilter(tag)` - 设置标签筛选
+  - `getNextSentence()` - 获取下一个句子（选择熟练度最低的20个随机）
+  - `checkAnswer(userInput)` - 检查答案（忽略标点符号、大小写）
+  - `resetConsecutiveErrors()` - 重置连续错误计数
+
+- 答案检查逻辑：
+  ```javascript
+  // 标准化文本：移除标点符号，转小写，去空格
+  normalize(text) {
+      return text
+          .toLowerCase()
+          .replace(/[.,!?;:'"()[\]{}]/g, '')
+          .trim();
+  }
+  ```
+
+#### 4. UI层实现
+
+**新增Tab结构：**
+```html
+<button class="tab-btn" data-tab="sentence">句子管理</button>
+<div id="sentence-tab" class="tab-content">...</div>
+```
+
+**句子管理界面包含：**
+- 批量导入区域：
+  - 文本域输入（支持多行）
+  - 格式提示：`英文|中文 [标签]`
+  - 批量导入按钮
+  
+- 单个添加区域：
+  - 英文句子输入框
+  - 中文翻译输入框
+  - 标签输入框（逗号分隔）
+  - 添加按钮
+  
+- 句子列表：
+  - 显示英文、中文、标签
+  - 显示统计数据（练习次数、正确/错误次数）
+  - 显示熟练度值
+  - 编辑标签按钮
+  - 删除按钮
+  - 排序按钮（按熟练度/按时间）
+  - 导出/导入按钮
+
+**UIController扩展：**
+- 构造函数添加：
+  - `sentencePracticeManager` 实例
+  - `sentenceListClickHandler` 事件处理器引用
+  
+- 新增方法：
+  - `addSentence()` - 添加单个句子
+  - `bulkImportSentences()` - 批量导入句子
+  - `loadSentenceList(sortBy)` - 加载句子列表
+  - `sortSentenceList(sortBy)` - 排序句子列表
+  - `editSentenceTags(id)` - 编辑句子标签
+  - `deleteSentence(id)` - 删除句子
+  - `exportSentenceData()` - 导出句子数据
+  - `importSentenceData(event)` - 导入句子数据
+
+- 修改方法：
+  - `switchTab()` - 添加对 `sentence` tab的支持
+
+#### 5. 批量导入格式支持
+
+**基础格式：**
+```
+英文句子|中文翻译
+```
+
+**带标签格式：**
+```
+英文句子|中文翻译 [标签1,标签2]
+```
+
+**示例：**
+```
+Hello, how are you?|你好，最近怎么样？ [日常,问候]
+I like programming.|我喜欢编程。 [兴趣]
+What's your name?|你叫什么名字？
+```
+
+**解析逻辑：**
+1. 按行分割
+2. 合并连续空格
+3. 用 `|` 分割英文和中文
+4. 正则提取标签：`/^(.+?)\s*\[([^\]]+)\]$/`
+5. 检查已存在句子（重置熟练度）
+6. 生成唯一ID并添加
+
+#### 6. 数据导出导入功能
+
+**导出格式（JSON）：**
+```javascript
+{
+    sentences: [...],           // 句子数组
+    sentencePracticeLog: {...}, // 练习日志
+    exportTime: "2025-12-15T..."
+}
+```
+
+**导入逻辑：**
+- 验证JSON格式
+- 确认覆盖提示
+- 导入句子数据
+- 导入练习日志（如果有）
+- 刷新界面
+
+**技术实现细节：**
+
+1. **唯一ID生成：**
+   ```javascript
+   do {
+       id = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+   } while (sentences.some(s => s.id === id));
+   ```
+
+2. **数据迁移：**
+   - 自动为旧句子添加 `stats` 和 `tags` 字段
+   - 保持向后兼容
+
+3. **标签共享：**
+   - 句子和单词使用相同的标签池
+   - `getAllTags()` 方法同时获取单词和句子的标签
+
+4. **事件委托：**
+   - 使用 `data-sentence-id` 属性标识句子
+   - 统一事件处理器避免重复绑定
+
+**已实现功能清单：**
+- ✅ 句子数据存储和管理
+- ✅ 句子CRUD操作
+- ✅ 批量导入（支持标签语法）
+- ✅ 单个添加
+- ✅ 标签编辑
+- ✅ 删除功能
+- ✅ 排序功能（熟练度/时间）
+- ✅ 数据导出/导入
+- ✅ 熟练度系统
+- ✅ 统计数据记录
+- ✅ 练习日志
+
+**待实现功能：**
+- ⏳ 句子练习界面（看中文→输入英文）
+- ⏳ 实时拼写检查
+- ⏳ 连续错误5次显示答案
+- ⏳ 统计页面扩展（分开显示单词和句子）
+- ⏳ 句子详细统计列表
+
+**代码变更统计：**
+- `app.js`: +670行
+- `index.html`: +47行
+- 新增类：`SentencePracticeManager`
+- 扩展类：`Storage`（+12个方法）、`UIController`（+9个方法）
+
+**用户体验：**
+- ✅ 与单词管理保持一致的操作方式
+- ✅ 支持标签分类和筛选
+- ✅ 完整的数据导出导入功能
+- ✅ 自动数据迁移和向后兼容
+
+---
+
+### 下一步计划（阶段二继续）
+1. 实现句子练习界面
+2. 扩展统计功能（分开显示单词和句子）
+3. 添加句子练习的快捷键支持
+
 
