@@ -1221,13 +1221,13 @@ class UIController {
 
     // 开始练习
     startPractice() {
-        const audioMode = document.getElementById('mode-audio').checked;
-        const chineseMode = document.getElementById('mode-chinese').checked;
+        const practiceWords = document.getElementById('practice-words').checked;
+        const practiceSentences = document.getElementById('practice-sentences').checked;
         const todayNewWordsOnly = document.getElementById('mode-today-new').checked;
         const selectedTag = document.getElementById('tag-filter').value;
 
-        if (!audioMode && !chineseMode) {
-            alert('请至少选择一种练习模式！');
+        if (!practiceWords && !practiceSentences) {
+            alert('请至少选择一种练习类型（单词或句子）！');
             return;
         }
 
@@ -1250,33 +1250,64 @@ class UIController {
             return;
         }
 
-        const words = Storage.getWords();
-        if (words.length === 0) {
-            alert('请先添加单词！');
-            this.switchTab('manage');
-            return;
-        }
+        // 检查单词练习
+        if (practiceWords) {
+            const audioMode = document.getElementById('mode-audio').checked;
+            const chineseMode = document.getElementById('mode-chinese').checked;
 
-        // 如果开启了今日新词模式
-        if (todayNewWordsOnly) {
-            const todayWords = Storage.getTodayNewWords();
-            if (todayWords.length === 0) {
-                alert('今天还没有添加新单词！');
+            if (!audioMode && !chineseMode) {
+                alert('请至少选择一种单词练习模式（听发音或看中文）！');
                 return;
             }
-        } else {
-            // 检查区间内是否有单词
-            const wordsInRange = Storage.getWordsByProficiencyRange(minProficiency, maxProficiency);
-            if (wordsInRange.length === 0) {
-                alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有单词！\n请调整区间设置。`);
+
+            const words = Storage.getWords();
+            if (words.length === 0) {
+                alert('请先添加单词！');
+                this.switchTab('manage');
                 return;
             }
+
+            // 如果开启了今日新词模式
+            if (todayNewWordsOnly) {
+                const todayWords = Storage.getTodayNewWords();
+                if (todayWords.length === 0) {
+                    alert('今天还没有添加新单词！');
+                    return;
+                }
+            } else {
+                // 检查区间内是否有单词
+                const wordsInRange = Storage.getWordsByProficiencyRange(minProficiency, maxProficiency);
+                if (wordsInRange.length === 0) {
+                    alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有单词！\n请调整区间设置。`);
+                    return;
+                }
+            }
+
+            this.practiceManager.setEnabledModes(audioMode, chineseMode);
+            this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
+            this.practiceManager.setTodayNewWordsOnly(todayNewWordsOnly);
+            this.practiceManager.setTagFilter(selectedTag === '全部标签' ? null : selectedTag);
         }
 
-        this.practiceManager.setEnabledModes(audioMode, chineseMode);
-        this.practiceManager.setProficiencyRange(minProficiency, maxProficiency);
-        this.practiceManager.setTodayNewWordsOnly(todayNewWordsOnly);
-        this.practiceManager.setTagFilter(selectedTag === '全部标签' ? null : selectedTag);
+        // 检查句子练习
+        if (practiceSentences) {
+            const sentences = Storage.getSentences();
+            if (sentences.length === 0) {
+                alert('请先添加句子！');
+                this.switchTab('sentence');
+                return;
+            }
+
+            // 检查区间内是否有句子
+            const sentencesInRange = Storage.getSentencesByProficiencyRange(minProficiency, maxProficiency);
+            if (sentencesInRange.length === 0) {
+                alert(`熟练度区间 ${minProficiency} ~ ${maxProficiency} 内没有句子！\n请调整区间设置。`);
+                return;
+            }
+
+            this.sentencePracticeManager.setProficiencyRange(minProficiency, maxProficiency);
+            this.sentencePracticeManager.setTagFilter(selectedTag === '全部标签' ? null : selectedTag);
+        }
 
         // 隐藏开始按钮，显示结束按钮
         document.getElementById('start-practice-btn').style.display = 'none';
@@ -1284,7 +1315,21 @@ class UIController {
         
         document.getElementById('practice-area').style.display = 'block';
 
-        this.nextWord();
+        // 决定先练习什么
+        if (practiceWords && practiceSentences) {
+            // 两种都选了，随机切换
+            this.currentPracticeType = Math.random() < 0.5 ? 'word' : 'sentence';
+        } else if (practiceWords) {
+            this.currentPracticeType = 'word';
+        } else {
+            this.currentPracticeType = 'sentence';
+        }
+
+        if (this.currentPracticeType === 'word') {
+            this.nextWord();
+        } else {
+            this.nextSentence();
+        }
     }
 
     // 停止练习

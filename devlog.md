@@ -992,6 +992,32 @@ What's your name?|你叫什么名字？
 
 ---
 
+### Commit 41: fix: 修复仅选择句子练习时仍显示单词的bug 🐛
+**问题描述：** 用户初始只选择"句子"练习，但第一个跳出来的还是单词
+
+**问题原因：** `startPractice()` 方法中旧代码残留，最后始终调用 `this.nextWord()`，没有根据用户选择的练习类型来决定
+
+**解决方案：**
+- 完整替换 `startPractice()` 方法为新版本
+- 根据 `practiceWords` 和 `practiceSentences` checkbox状态决定练习类型
+- 单独选择句子时：`currentPracticeType = 'sentence'`，调用 `nextSentence()`
+- 单独选择单词时：`currentPracticeType = 'word'`，调用 `nextWord()`
+- 混合模式时：随机决定先练习哪个
+
+**代码变更：**
+- `app.js startPractice()`: 完整替换为支持句子的新逻辑
+  - 检查 `practice-words` 和 `practice-sentences` checkbox
+  - 分别验证单词和句子的数据和区间
+  - 根据选择设置 `currentPracticeType`
+  - 调用对应的 `nextWord()` 或 `nextSentence()`
+
+**测试场景：**
+- ✅ 仅勾选"单词" → 开始单词练习
+- ✅ 仅勾选"句子" → 开始句子练习
+- ✅ 同时勾选 → 随机开始单词或句子练习
+
+---
+
 ### 下一步计划（阶段二继续）
 1. ✅ 实现句子练习界面
 2. ✅ 扩展统计功能（分开显示单词和句子）
