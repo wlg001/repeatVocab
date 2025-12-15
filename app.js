@@ -2,6 +2,8 @@
 class Storage {
     static STORAGE_KEY = 'vocabApp_words';
     static PRACTICE_LOG_KEY = 'vocabApp_practiceLog';
+    static SENTENCE_KEY = 'vocabApp_sentences';
+    static SENTENCE_LOG_KEY = 'vocabApp_sentencePracticeLog';
     
     // 初始化：从localStorage迁移数据到chrome.storage.sync
     static async initialize() {
@@ -433,6 +435,168 @@ class Storage {
 
         return repairedCount;
     }
+
+    // ==================== 句子管理方法 ====================
+    
+    // 获取所有句子
+    static getSentences() {
+        const data = localStorage.getItem(this.SENTENCE_KEY);
+        const sentences = data ? JSON.parse(data) : [];
+        
+        // 数据迁移：确保每个句子都有必要的字段
+        let needsSave = false;
+        sentences.forEach(sentence => {
+            if (!sentence.stats) {
+                sentence.stats = {
+                    practiceCount: 0,
+                    correctCount: 0,
+                    errorCount: 0,
+                    lastPracticeTime: null
+                };
+                needsSave = true;
+            }
+            if (!sentence.tags) {
+                sentence.tags = [];
+                needsSave = true;
+            }
+        });
+        
+        if (needsSave) {
+            this.saveSentences(sentences);
+        }
+        
+        return sentences;
+    }
+
+    // 保存句子
+    static saveSentences(sentences) {
+        const data = JSON.stringify(sentences);
+        this.setData(this.SENTENCE_KEY, data);
+    }
+
+    // 获取句子练习日志
+    static getSentencePracticeLog() {
+        const data = localStorage.getItem(this.SENTENCE_LOG_KEY);
+        return data ? JSON.parse(data) : {};
+    }
+
+    // 保存句子练习日志
+    static saveSentencePracticeLog(log) {
+        const data = JSON.stringify(log);
+        this.setData(this.SENTENCE_LOG_KEY, data);
+    }
+
+    // 记录今日句子练习
+    static recordTodaySentencePractice(sentenceId, isCorrect) {
+        const log = this.getSentencePracticeLog();
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (!log[today]) {
+            log[today] = {
+                sentenceIds: new Set(),
+                correctCount: 0
+            };
+        } else {
+            log[today].sentenceIds = new Set(log[today].sentenceIds || []);
+        }
+        
+        log[today].sentenceIds.add(sentenceId);
+        if (isCorrect) {
+            log[today].correctCount = (log[today].correctCount || 0) + 1;
+        }
+        
+        log[today].sentenceIds = Array.from(log[today].sentenceIds);
+        this.saveSentencePracticeLog(log);
+    }
+
+    // 添加句子
+    static addSentence(english, chinese, tags = []) {
+        const sentences = this.getSentences();
+        
+        // 生成唯一ID
+        let id;
+        do {
+            id = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+        } while (sentences.some(s => s.id === id));
+        
+        const newSentence = {
+            id: id,
+            english: english.trim(),
+            chinese: chinese.trim(),
+            tags: tags,
+            proficiency: -100,
+            addedTime: new Date().toISOString(),
+            stats: {
+                practiceCount: 0,
+                correctCount: 0,
+                errorCount: 0,
+                lastPracticeTime: null
+            }
+        };
+        
+        sentences.push(newSentence);
+        this.saveSentences(sentences);
+        return newSentence;
+    }
+
+    // 更新句子
+    static updateSentence(id, updates) {
+        const sentences = this.getSentences();
+        const sentence = sentences.find(s => s.id === id);
+        if (sentence) {
+            Object.assign(sentence, updates);
+            this.saveSentences(sentences);
+        }
+    }
+
+    // 删除句子
+    static deleteSentence(id) {
+        const sentences = this.getSentences();
+        const filtered = sentences.filter(s => s.id !== id);
+        this.saveSentences(filtered);
+    }
+
+    // 通过ID获取句子
+    static getSentenceById(id) {
+        const sentences = this.getSentences();
+        return sentences.find(s => s.id === id);
+    }
+
+    // 获取熟练度最低的N个句子
+    static getLowestProficiencySentences(n = 20) {
+        const sentences = this.getSentences();
+        return sentences
+            .sort((a, b) => a.proficiency - b.proficiency)
+            .slice(0, n);
+    }
+
+    // 按熟练度区间获取句子
+    static getSentencesByProficiencyRange(minProficiency, maxProficiency) {
+        const sentences = this.getSentences();
+        return sentences.filter(s => s.proficiency >= minProficiency && s.proficiency <= maxProficiency);
+    }
+
+    // 获取今日新增句子
+    static getTodayNewSentences() {
+        const sentences = this.getSentences();
+        const today = new Date().toISOString().split('T')[0];
+        return sentences.filter(sentence => {
+            const addedDate = sentence.addedTime.split('T')[0];
+            return addedDate === today;
+        });
+    }
+
+    // 按标签筛选句子
+    static getSentencesByTags(tags) {
+        if (!tags || tags.length === 0) {
+            return this.getSentences();
+        }
+        const sentences = this.getSentences();
+        return sentences.filter(sentence => {
+            if (!sentence.tags || sentence.tags.length === 0) return false;
+            return tags.some(tag => sentence.tags.includes(tag));
+        });
+    }
 }
 
 
@@ -627,6 +791,129 @@ class PracticeManager {
     }
 }
 
+// ==================== 句子练习管理模块 ====================
+class SentencePracticeManager {
+    constructor() {
+        this.currentSentence = null;
+        this.lastSentence = null;
+        this.availableSentences = [];
+        this.proficiencyRange = { min: -100, max: 100 };
+        this.todayNewSentencesOnly = false;
+        this.consecutiveErrors = 0;
+        this.tagFilter = null;
+    }
+
+    // 设置熟练度区间
+    setProficiencyRange(min, max) {
+        this.proficiencyRange = { min, max };
+    }
+
+    // 设置今日新句子练习模式
+    setTodayNewSentencesOnly(enabled) {
+        this.todayNewSentencesOnly = enabled;
+    }
+
+    // 设置标签筛选
+    setTagFilter(tag) {
+        this.tagFilter = tag;
+    }
+
+    // 获取下一个句子
+    getNextSentence() {
+        // 保存上一个句子
+        if (this.currentSentence) {
+            this.lastSentence = { ...this.currentSentence };
+        }
+
+        let sentences;
+
+        // 今日新句子模式
+        if (this.todayNewSentencesOnly) {
+            sentences = Storage.getTodayNewSentences();
+            if (sentences.length === 0) {
+                return null;
+            }
+        } else {
+            // 按熟练度区间筛选
+            sentences = Storage.getSentencesByProficiencyRange(
+                this.proficiencyRange.min,
+                this.proficiencyRange.max
+            );
+        }
+
+        // 按标签筛选
+        if (this.tagFilter) {
+            sentences = sentences.filter(sentence => 
+                sentence.tags && sentence.tags.includes(this.tagFilter)
+            );
+        }
+
+        if (sentences.length === 0) {
+            return null;
+        }
+
+        // 选择熟练度最低的20个，然后随机选一个
+        const lowestSentences = sentences
+            .sort((a, b) => a.proficiency - b.proficiency)
+            .slice(0, Math.min(20, sentences.length));
+
+        const randomIndex = Math.floor(Math.random() * lowestSentences.length);
+        this.currentSentence = lowestSentences[randomIndex];
+        this.consecutiveErrors = 0;
+
+        return this.currentSentence;
+    }
+
+    // 检查答案（忽略标点符号）
+    checkAnswer(userInput) {
+        if (!this.currentSentence) return null;
+
+        // 移除标点符号，转小写，去除首尾空格
+        const normalize = (text) => {
+            return text
+                .toLowerCase()
+                .replace(/[.,!?;:'"()[\]{}]/g, '')
+                .trim();
+        };
+
+        const userAnswer = normalize(userInput);
+        const correctAnswer = normalize(this.currentSentence.english);
+
+        const isCorrect = userAnswer === correctAnswer;
+
+        // 更新统计
+        const sentence = Storage.getSentenceById(this.currentSentence.id);
+        sentence.stats.practiceCount++;
+        
+        if (isCorrect) {
+            sentence.proficiency++;
+            sentence.stats.correctCount++;
+            this.consecutiveErrors = 0;
+        } else {
+            sentence.proficiency--;
+            sentence.stats.errorCount++;
+            this.consecutiveErrors++;
+        }
+        
+        sentence.stats.lastPracticeTime = new Date().toISOString();
+        Storage.updateSentence(sentence.id, sentence);
+
+        // 记录到练习日志
+        Storage.recordTodaySentencePractice(sentence.id, isCorrect);
+
+        return {
+            isCorrect,
+            consecutiveErrors: this.consecutiveErrors,
+            sentence: this.currentSentence
+        };
+    }
+
+    // 重置连续错误计数
+    resetConsecutiveErrors() {
+        this.consecutiveErrors = 0;
+    }
+}
+
 // ==================== 发音管理模块 ====================
 class AudioManager {
     constructor() {
@@ -661,8 +948,10 @@ class AudioManager {
 class UIController {
     constructor() {
         this.practiceManager = new PracticeManager();
+        this.sentencePracticeManager = new SentencePracticeManager();
         this.audioManager = new AudioManager();
         this.wordListClickHandler = null; // 存储事件处理器引用
+        this.sentenceListClickHandler = null; // 存储句子列表事件处理器引用
         this.init();
     }
 
@@ -671,6 +960,7 @@ class UIController {
         this.loadTagFilter();
         this.loadTagList();
         this.loadWordList();
+        this.loadSentenceList();
         this.updateStats();
     }
 
@@ -751,6 +1041,42 @@ class UIController {
         // 高级设置展开/收起
         document.getElementById('toggle-advanced-settings').addEventListener('click', () => this.toggleAdvancedSettings());
         
+        // 句子管理相关事件
+        document.getElementById('add-sentence-btn').addEventListener('click', () => this.addSentence());
+        document.getElementById('bulk-sentence-import-btn').addEventListener('click', () => this.bulkImportSentences());
+        document.getElementById('sort-sentence-by-proficiency').addEventListener('click', () => this.sortSentenceList('proficiency'));
+        document.getElementById('sort-sentence-by-time').addEventListener('click', () => this.sortSentenceList('time'));
+        document.getElementById('export-sentence-data-btn').addEventListener('click', () => this.exportSentenceData());
+        document.getElementById('import-sentence-data-btn').addEventListener('click', () => {
+            document.getElementById('import-sentence-file-input').click();
+        });
+        document.getElementById('import-sentence-file-input').addEventListener('change', (e) => this.importSentenceData(e));
+
+        // 句子列表事件委托
+        const sentenceListContainer = document.getElementById('sentence-list');
+        if (this.sentenceListClickHandler) {
+            sentenceListContainer.removeEventListener('click', this.sentenceListClickHandler);
+        }
+        
+        this.sentenceListClickHandler = (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const sentenceItem = button.closest('.word-item');
+            if (!sentenceItem) return;
+
+            const sentenceId = sentenceItem.dataset.sentenceId;
+            const action = button.dataset.action;
+
+            if (action === 'edit-tags') {
+                this.editSentenceTags(sentenceId);
+            } else if (action === 'delete') {
+                this.deleteSentence(sentenceId);
+            }
+        };
+        
+        sentenceListContainer.addEventListener('click', this.sentenceListClickHandler);
+        
         // 全局键盘快捷键
         document.addEventListener('keydown', (e) => this.handleGlobalKeyboard(e));
     }
@@ -801,6 +1127,8 @@ class UIController {
         if (tabName === 'manage') {
             this.loadWordList();
             this.loadTagList();
+        } else if (tabName === 'sentence') {
+            this.loadSentenceList();
         } else if (tabName === 'stats') {
             this.updateStats();
         }
@@ -1701,6 +2029,307 @@ class UIController {
         }
         
         this.updateCalendar(year, month);
+    }
+
+    // ==================== 句子管理相关方法 ====================
+    
+    // 添加单个句子
+    addSentence() {
+        const englishInput = document.getElementById('new-sentence-english');
+        const chineseInput = document.getElementById('new-sentence-chinese');
+        const tagsInput = document.getElementById('new-sentence-tags');
+
+        const english = englishInput.value.trim();
+        const chinese = chineseInput.value.trim();
+        const tagsText = tagsInput.value.trim();
+
+        if (!english || !chinese) {
+            alert('请填写完整的英文句子和中文翻译！');
+            return;
+        }
+
+        const tags = tagsText ? tagsText.split(/[,，]/).map(t => t.trim()).filter(t => t) : [];
+
+        // 检查是否已存在
+        const existingSentences = Storage.getSentences();
+        const existingSentence = existingSentences.find(s => s.english.toLowerCase() === english.toLowerCase());
+        
+        if (existingSentence) {
+            if (confirm(`句子"${english}"已存在！是否重置熟练度为-100并更新翻译和标签？`)) {
+                const sentenceToUpdate = Storage.getSentenceById(existingSentence.id);
+                sentenceToUpdate.proficiency = -100;
+                sentenceToUpdate.chinese = chinese;
+                sentenceToUpdate.tags = tags;
+                Storage.updateSentence(sentenceToUpdate.id, sentenceToUpdate);
+                
+                englishInput.value = '';
+                chineseInput.value = '';
+                tagsInput.value = '';
+                
+                this.loadSentenceList();
+                this.showFeedback('句子熟练度已重置！', 'success');
+            }
+            return;
+        }
+
+        Storage.addSentence(english, chinese, tags);
+        
+        englishInput.value = '';
+        chineseInput.value = '';
+        tagsInput.value = '';
+        
+        this.loadSentenceList();
+        this.showFeedback('句子添加成功！', 'success');
+    }
+
+    // 批量导入句子
+    bulkImportSentences() {
+        const bulkInput = document.getElementById('bulk-sentence-import');
+        const text = bulkInput.value.trim();
+
+        if (!text) {
+            alert('请输入要导入的句子！');
+            return;
+        }
+
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // 解析所有行
+        const sentencesToAdd = [];
+        lines.forEach((line, index) => {
+            let trimmedLine = line.trim();
+            if (!trimmedLine) return;
+
+            // 合并连续空格
+            trimmedLine = trimmedLine.replace(/\s+/g, ' ');
+
+            // 分割英文和中文（使用|分隔）
+            const pipeIndex = trimmedLine.indexOf('|');
+            if (pipeIndex === -1) {
+                errorCount++;
+                errors.push(`第${index + 1}行：格式错误，缺少"|"分隔符`);
+                return;
+            }
+
+            const english = trimmedLine.substring(0, pipeIndex).trim();
+            let remainingText = trimmedLine.substring(pipeIndex + 1).trim();
+
+            if (!english || !remainingText) {
+                errorCount++;
+                errors.push(`第${index + 1}行：英文或中文为空`);
+                return;
+            }
+
+            // 尝试解析标签（格式：中文 [tag1,tag2]）
+            let chinese = remainingText;
+            let tags = [];
+            const tagMatch = remainingText.match(/^(.+?)\s*\[([^\]]+)\]$/);
+            if (tagMatch) {
+                chinese = tagMatch[1].trim();
+                tags = tagMatch[2].split(/[,，]/).map(t => t.trim()).filter(t => t);
+            }
+
+            sentencesToAdd.push({ english, chinese, tags, lineNumber: index + 1 });
+        });
+
+        // 逐个添加句子
+        sentencesToAdd.forEach(item => {
+            const { english, chinese, tags, lineNumber } = item;
+            
+            // 检查是否已存在
+            const existingSentences = Storage.getSentences();
+            const existingSentence = existingSentences.find(s => s.english.toLowerCase() === english.toLowerCase());
+            
+            if (existingSentence) {
+                const sentenceToUpdate = Storage.getSentenceById(existingSentence.id);
+                sentenceToUpdate.proficiency = -100;
+                sentenceToUpdate.chinese = chinese;
+                sentenceToUpdate.tags = tags;
+                Storage.updateSentence(sentenceToUpdate.id, sentenceToUpdate);
+                successCount++;
+                return;
+            }
+
+            // 添加新句子
+            try {
+                Storage.addSentence(english, chinese, tags);
+                successCount++;
+            } catch (error) {
+                errorCount++;
+                errors.push(`第${lineNumber}行：添加失败 - ${error.message}`);
+            }
+        });
+
+        // 显示导入结果
+        let message = `导入完成！\n成功: ${successCount} 个（包括重置已存在句子）\n失败: ${errorCount} 个`;
+        
+        if (errors.length > 0 && errors.length <= 5) {
+            message += '\n\n错误详情：\n' + errors.join('\n');
+        } else if (errors.length > 5) {
+            message += '\n\n错误详情（前5条）：\n' + errors.slice(0, 5).join('\n');
+        }
+
+        alert(message);
+
+        if (successCount > 0) {
+            bulkInput.value = '';
+            this.loadSentenceList();
+        }
+    }
+
+    // 加载句子列表
+    loadSentenceList(sortBy = 'proficiency') {
+        const sentences = Storage.getSentences();
+        const listContainer = document.getElementById('sentence-list');
+        const countBadge = document.getElementById('sentence-count');
+
+        countBadge.textContent = sentences.length;
+
+        if (sentences.length === 0) {
+            listContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">还没有添加句子</p>';
+            return;
+        }
+
+        // 排序
+        let sortedSentences = [...sentences];
+        if (sortBy === 'proficiency') {
+            sortedSentences.sort((a, b) => a.proficiency - b.proficiency);
+        } else if (sortBy === 'time') {
+            sortedSentences.sort((a, b) => new Date(b.addedTime) - new Date(a.addedTime));
+        }
+
+        listContainer.innerHTML = sortedSentences.map(sentence => {
+            const addedDate = new Date(sentence.addedTime).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            
+            // 渲染标签
+            const tagsHtml = sentence.tags && sentence.tags.length > 0 
+                ? `<div class="word-tags">
+                    ${sentence.tags.map(tag => `<span class="word-tag">${tag}</span>`).join('')}
+                   </div>`
+                : '';
+            
+            return `
+            <div class="word-item" data-sentence-id="${sentence.id}">
+                <div class="word-info">
+                    <div class="word-title">${sentence.english}</div>
+                    <div class="word-meanings">${sentence.chinese}</div>
+                    ${tagsHtml}
+                    <div class="word-meta">
+                        加入时间: ${addedDate} | 
+                        练习: ${sentence.stats.practiceCount}次 | 
+                        正确: ${sentence.stats.correctCount}次 | 
+                        错误: ${sentence.stats.errorCount}次
+                    </div>
+                </div>
+                <div class="word-proficiency">${sentence.proficiency}</div>
+                <div class="word-actions">
+                    <button class="btn btn-edit" data-action="edit-tags">编辑标签</button>
+                    <button class="btn btn-delete" data-action="delete">删除</button>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
+
+    // 排序句子列表
+    sortSentenceList(sortBy) {
+        this.loadSentenceList(sortBy);
+    }
+
+    // 编辑句子标签
+    editSentenceTags(id) {
+        const sentence = Storage.getSentenceById(id);
+        if (!sentence) return;
+        
+        const currentTags = sentence.tags && sentence.tags.length > 0 ? sentence.tags.join(',') : '';
+        const newTagsText = prompt(`编辑句子"${sentence.english}"的标签（用逗号分隔）：`, currentTags);
+        
+        if (newTagsText !== null) {
+            const newTags = newTagsText ? newTagsText.split(/[,，]/).map(t => t.trim()).filter(t => t) : [];
+            sentence.tags = newTags;
+            Storage.updateSentence(id, sentence);
+            this.loadSentenceList();
+            this.showFeedback('标签已更新！', 'success');
+        }
+    }
+
+    // 删除句子
+    deleteSentence(id) {
+        Storage.deleteSentence(id);
+        this.loadSentenceList();
+    }
+
+    // 导出句子数据
+    exportSentenceData() {
+        const sentences = Storage.getSentences();
+        const sentenceLog = Storage.getSentencePracticeLog();
+        
+        const data = {
+            sentences: sentences,
+            sentencePracticeLog: sentenceLog,
+            exportTime: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sentences-backup-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        this.showFeedback('句子数据导出成功！', 'success');
+    }
+
+    // 导入句子数据
+    importSentenceData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                
+                if (!data.sentences || !Array.isArray(data.sentences)) {
+                    alert('数据格式错误！');
+                    return;
+                }
+
+                if (Storage.getSentences().length > 0) {
+                    if (!confirm('导入数据将覆盖当前所有句子，是否继续？')) {
+                        return;
+                    }
+                }
+
+                // 导入句子数据
+                Storage.saveSentences(data.sentences);
+                
+                // 导入练习日志（如果有）
+                if (data.sentencePracticeLog) {
+                    Storage.saveSentencePracticeLog(data.sentencePracticeLog);
+                }
+
+                // 刷新界面
+                this.loadSentenceList();
+                
+                alert(`导入成功！\n共导入 ${data.sentences.length} 个句子\n导出时间: ${new Date(data.exportTime).toLocaleString('zh-CN')}`);
+            } catch (error) {
+                alert('数据解析失败！请确保文件格式正确。\n错误: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+        
+        // 重置文件选择
+        event.target.value = '';
     }
 }
 
