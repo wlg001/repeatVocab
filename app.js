@@ -1107,10 +1107,17 @@ class UIController {
 
     // 处理全局键盘快捷键
     handleGlobalKeyboard(e) {
-        // Alt 键：播放发音（听音模式重听，中文模式作为提示）
-        if (e.key === 'Alt' && this.practiceManager.currentWord) {
+        // Alt 键：单词模式播放发音，句子模式显示答案
+        if (e.key === 'Alt') {
             e.preventDefault();
-            this.playAudio();
+            
+            if (this.currentPracticeType === 'sentence' && this.sentencePracticeManager.currentSentence) {
+                // 句子模式：显示完整的英文句子
+                this.showSentenceHint();
+            } else if (this.practiceManager.currentWord) {
+                // 单词模式：播放发音
+                this.playAudio();
+            }
         }
     }
 
@@ -1531,6 +1538,26 @@ class UIController {
         }
     }
 
+    // 显示句子提示（按Alt键时）
+    showSentenceHint() {
+        const sentence = this.sentencePracticeManager.currentSentence;
+        if (!sentence) return;
+
+        const display = document.getElementById('correct-answer-display');
+        const wordElement = display.querySelector('.correct-word');
+        const meaningsElement = display.querySelector('.correct-meanings');
+
+        wordElement.textContent = `💡 ${sentence.english}`;
+        meaningsElement.textContent = sentence.chinese;
+
+        display.style.display = 'block';
+        
+        // 2秒后自动隐藏
+        setTimeout(() => {
+            display.style.display = 'none';
+        }, 2000);
+    }
+
     // 处理输入
     handleInput(e) {
         const input = e.target.value;
@@ -1775,13 +1802,22 @@ class UIController {
         const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
         
         if (existingWord) {
-            // 单词已存在，重置熟练度为-100但保留统计数据
-            if (confirm(`单词"${word}"已存在！是否重置熟练度为-100并更新释义和标签？\n（注意：已有的练习统计数据将保留）`)) {
-                // 重新获取最新的单词数据
-                const wordToUpdate = Storage.getWordById(existingWord.id);
-                wordToUpdate.proficiency = -100;
-                wordToUpdate.meanings = meanings;
-                wordToUpdate.tags = tags;
+            // 单词已存在，合并释义和标签，熟练度-10
+            const wordToUpdate = Storage.getWordById(existingWord.id);
+            
+            // 合并释义（去重）
+            const mergedMeanings = [...new Set([...wordToUpdate.meanings, ...meanings])];
+            
+            // 合并标签（去重）
+            const mergedTags = [...new Set([...wordToUpdate.tags, ...tags])];
+            
+            // 熟练度-10（不低于-100）
+            const newProficiency = Math.max(wordToUpdate.proficiency - 10, -100);
+            
+            if (confirm(`单词"${word}"已存在！\n\n当前释义: ${wordToUpdate.meanings.join(', ')}\n新增释义: ${meanings.join(', ')}\n合并后: ${mergedMeanings.join(', ')}\n\n当前标签: ${wordToUpdate.tags.join(', ') || '无'}\n新增标签: ${tags.join(', ') || '无'}\n合并后: ${mergedTags.join(', ') || '无'}\n\n熟练度: ${wordToUpdate.proficiency} → ${newProficiency}\n\n是否更新？`)) {
+                wordToUpdate.meanings = mergedMeanings;
+                wordToUpdate.tags = mergedTags;
+                wordToUpdate.proficiency = newProficiency;
                 // 保留 wordToUpdate.stats 统计数据不变
                 Storage.updateWord(wordToUpdate.id, wordToUpdate);
                 
@@ -1792,7 +1828,7 @@ class UIController {
                 this.loadWordList();
                 this.loadTagList();
                 this.loadTagFilter();
-                this.showFeedback('单词熟练度已重置！', 'success');
+                this.showFeedback('单词已更新（释义和标签已合并，熟练度-10）！', 'success');
             }
             return;
         }
@@ -1880,11 +1916,19 @@ class UIController {
             const existingWord = existingWords.find(w => w.word.toLowerCase() === word.toLowerCase());
             
             if (existingWord) {
-                // 单词已存在，重置熟练度但保留统计数据（与 addWord 相同逻辑）
+                // 单词已存在，合并释义和标签，熟练度-10（与 addWord 相同逻辑）
                 const wordToUpdate = Storage.getWordById(existingWord.id);
-                wordToUpdate.proficiency = -100;
-                wordToUpdate.meanings = meanings;
-                wordToUpdate.tags = tags;
+                
+                // 合并释义（去重）
+                const mergedMeanings = [...new Set([...wordToUpdate.meanings, ...meanings])];
+                
+                // 合并标签（去重）
+                const mergedTags = [...new Set([...wordToUpdate.tags, ...tags])];
+                
+                // 熟练度-10（不低于-100）
+                wordToUpdate.proficiency = Math.max(wordToUpdate.proficiency - 10, -100);
+                wordToUpdate.meanings = mergedMeanings;
+                wordToUpdate.tags = mergedTags;
                 // 保留 wordToUpdate.stats 统计数据不变
                 Storage.updateWord(wordToUpdate.id, wordToUpdate);
                 successCount++;
@@ -2341,11 +2385,24 @@ class UIController {
         const existingSentence = existingSentences.find(s => s.english.toLowerCase() === english.toLowerCase());
         
         if (existingSentence) {
-            if (confirm(`句子"${english}"已存在！是否重置熟练度为-100并更新翻译和标签？`)) {
-                const sentenceToUpdate = Storage.getSentenceById(existingSentence.id);
-                sentenceToUpdate.proficiency = -100;
-                sentenceToUpdate.chinese = chinese;
-                sentenceToUpdate.tags = tags;
+            // 句子已存在，合并翻译和标签，熟练度-10
+            const sentenceToUpdate = Storage.getSentenceById(existingSentence.id);
+            
+            // 合并翻译（去重，将中文作为多个可选翻译）
+            const existingTranslations = sentenceToUpdate.chinese.split(/[;;；]/).map(t => t.trim()).filter(t => t);
+            const newTranslations = chinese.split(/[;;；]/).map(t => t.trim()).filter(t => t);
+            const mergedTranslations = [...new Set([...existingTranslations, ...newTranslations])];
+            
+            // 合并标签（去重）
+            const mergedTags = [...new Set([...sentenceToUpdate.tags, ...tags])];
+            
+            // 熟练度-10（不低于-100）
+            const newProficiency = Math.max(sentenceToUpdate.proficiency - 10, -100);
+            
+            if (confirm(`句子"${english}"已存在！\n\n当前翻译: ${sentenceToUpdate.chinese}\n新增翻译: ${chinese}\n合并后: ${mergedTranslations.join('; ')}\n\n当前标签: ${sentenceToUpdate.tags.join(', ') || '无'}\n新增标签: ${tags.join(', ') || '无'}\n合并后: ${mergedTags.join(', ') || '无'}\n\n熟练度: ${sentenceToUpdate.proficiency} → ${newProficiency}\n\n是否更新？`)) {
+                sentenceToUpdate.chinese = mergedTranslations.join('; ');
+                sentenceToUpdate.tags = mergedTags;
+                sentenceToUpdate.proficiency = newProficiency;
                 Storage.updateSentence(sentenceToUpdate.id, sentenceToUpdate);
                 
                 englishInput.value = '';
@@ -2353,7 +2410,7 @@ class UIController {
                 tagsInput.value = '';
                 
                 this.loadSentenceList();
-                this.showFeedback('句子熟练度已重置！', 'success');
+                this.showFeedback('句子已更新（翻译和标签已合并，熟练度-10）！', 'success');
             }
             return;
         }
@@ -2431,10 +2488,21 @@ class UIController {
             const existingSentence = existingSentences.find(s => s.english.toLowerCase() === english.toLowerCase());
             
             if (existingSentence) {
+                // 句子已存在，合并翻译和标签，熟练度-10
                 const sentenceToUpdate = Storage.getSentenceById(existingSentence.id);
-                sentenceToUpdate.proficiency = -100;
-                sentenceToUpdate.chinese = chinese;
-                sentenceToUpdate.tags = tags;
+                
+                // 合并翻译（去重）
+                const existingTranslations = sentenceToUpdate.chinese.split(/[;;；]/).map(t => t.trim()).filter(t => t);
+                const newTranslations = chinese.split(/[;;；]/).map(t => t.trim()).filter(t => t);
+                const mergedTranslations = [...new Set([...existingTranslations, ...newTranslations])];
+                
+                // 合并标签（去重）
+                const mergedTags = [...new Set([...sentenceToUpdate.tags, ...tags])];
+                
+                // 熟练度-10（不低于-100）
+                sentenceToUpdate.proficiency = Math.max(sentenceToUpdate.proficiency - 10, -100);
+                sentenceToUpdate.chinese = mergedTranslations.join('; ');
+                sentenceToUpdate.tags = mergedTags;
                 Storage.updateSentence(sentenceToUpdate.id, sentenceToUpdate);
                 successCount++;
                 return;
