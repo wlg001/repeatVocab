@@ -952,6 +952,7 @@ class UIController {
         this.audioManager = new AudioManager();
         this.wordListClickHandler = null; // 存储事件处理器引用
         this.sentenceListClickHandler = null; // 存储句子列表事件处理器引用
+        this.currentPracticeType = null; // 'word' 或 'sentence'
         this.init();
     }
 
@@ -986,6 +987,11 @@ class UIController {
             if (e.key === 'Enter') {
                 this.handleSubmit();
             }
+        });
+
+        // 练习类型切换
+        document.getElementById('practice-words').addEventListener('change', (e) => {
+            document.getElementById('word-mode-section').style.display = e.target.checked ? 'flex' : 'none';
         });
 
         // 添加单词
@@ -1286,6 +1292,12 @@ class UIController {
         document.getElementById('practice-area').style.display = 'none';
         document.getElementById('last-word-display').style.display = 'none';
         this.clearInput();
+        
+        this.currentPracticeType = null;
+        this.practiceManager.resetConsecutiveErrors();
+        this.sentencePracticeManager.resetConsecutiveErrors();
+        
+        this.updateStats();
     }
 
     // 显示上一个单词
@@ -1308,6 +1320,64 @@ class UIController {
         lastWordDisplay.style.display = 'block';
     }
 
+    // 显示上一个句子
+    showLastSentence(sentence) {
+        const lastWordDisplay = document.getElementById('last-word-display');
+        if (!sentence) {
+            lastWordDisplay.style.display = 'none';
+            return;
+        }
+        
+        const textLink = document.getElementById('last-word-link');
+        const meaningsSpan = lastWordDisplay.querySelector('.last-word-meanings');
+        const labelElement = lastWordDisplay.querySelector('.last-word-label');
+        
+        // 修改标签显示
+        labelElement.textContent = '上一个句子:';
+        
+        // 设置句子内容
+        textLink.textContent = sentence.english;
+        textLink.href = '#';
+        textLink.title = sentence.chinese;
+        textLink.onclick = (e) => e.preventDefault();
+        
+        meaningsSpan.textContent = sentence.chinese;
+        lastWordDisplay.style.display = 'block';
+    }
+
+    // 显示正确的句子答案
+    showCorrectSentence() {
+        const sentence = this.sentencePracticeManager.currentSentence;
+        const display = document.getElementById('correct-answer-display');
+        const wordElement = display.querySelector('.correct-word');
+        const meaningsElement = display.querySelector('.correct-meanings');
+
+        wordElement.textContent = `✓ ${sentence.english}`;
+        meaningsElement.textContent = sentence.chinese;
+
+        display.style.display = 'block';
+        
+        // 隐藏输入框和其他提示
+        document.getElementById('word-input').style.opacity = '0.5';
+        document.getElementById('error-message').style.display = 'none';
+    }
+
+    // 显示正确答案（句子连续错误5次时）
+    showCorrectAnswerForSentenceError(sentence) {
+        const display = document.getElementById('correct-answer-display');
+        const wordElement = display.querySelector('.correct-word');
+        const meaningsElement = display.querySelector('.correct-meanings');
+
+        wordElement.textContent = sentence.english;
+        meaningsElement.textContent = sentence.chinese;
+
+        display.style.display = 'block';
+        
+        // 隐藏输入框和其他提示
+        document.getElementById('word-input').style.opacity = '0.5';
+        document.getElementById('error-message').style.display = 'none';
+    }
+
     // 下一个单词
     nextWord() {
         // 保存并显示上一个单词
@@ -1325,6 +1395,47 @@ class UIController {
 
         this.clearInput();
         this.updatePracticeDisplay(result);
+    }
+
+    // 下一个句子
+    nextSentence() {
+        // 保存并显示上一个句子
+        if (this.sentencePracticeManager.currentSentence) {
+            this.sentencePracticeManager.lastSentence = this.sentencePracticeManager.currentSentence;
+            this.showLastSentence(this.sentencePracticeManager.lastSentence);
+        }
+        
+        const sentence = this.sentencePracticeManager.getNextSentence();
+        if (!sentence) {
+            alert('没有可练习的句子！');
+            this.stopPractice();
+            return;
+        }
+
+        this.clearInput();
+        this.updateSentencePracticeDisplay(sentence);
+    }
+
+    // 更新句子练习显示
+    updateSentencePracticeDisplay(sentence) {
+        // 更新模式显示
+        document.getElementById('current-mode-display').textContent = '📝 句子练习';
+        document.getElementById('proficiency-display').textContent = `熟练度: ${sentence.proficiency}`;
+
+        // 隐藏单词模式内容
+        document.getElementById('audio-mode-content').style.display = 'none';
+        document.getElementById('chinese-mode-content').style.display = 'none';
+
+        // 显示句子中文翻译（复用chinese-mode-content）
+        document.getElementById('chinese-mode-content').style.display = 'block';
+        document.getElementById('chinese-meaning').textContent = sentence.chinese;
+        
+        const inputElement = document.getElementById('word-input');
+        inputElement.classList.remove('with-hint');
+        inputElement.placeholder = '请输入英文句子...';
+
+        // 聚焦输入框
+        inputElement.focus();
     }
 
     // 更新练习显示
@@ -1374,13 +1485,19 @@ class UIController {
     // 处理输入
     handleInput(e) {
         const input = e.target.value;
-        const validation = this.practiceManager.validateInput(input);
-
         const inputField = document.getElementById('word-input');
         const errorMessage = document.getElementById('error-message');
 
         inputField.classList.remove('correct', 'error');
         errorMessage.style.display = 'none';
+
+        // 句子练习模式 - 不做实时验证，等待提交
+        if (this.currentPracticeType === 'sentence') {
+            return;
+        }
+
+        // 单词练习模式 - 实时验证
+        const validation = this.practiceManager.validateInput(input);
 
         if (validation.isComplete && validation.isCorrect) {
             // 完全正确，立即提交答案
@@ -1443,15 +1560,78 @@ class UIController {
         const input = document.getElementById('word-input').value;
         if (!input.trim()) return;
 
-        const result = this.practiceManager.submitAnswer(input);
-        
-        if (result.isCorrect) {
-            // 正确，显示单词和释义
-            this.showCorrectAnswer();
-            setTimeout(() => this.nextWord(), 1000);
+        if (this.currentPracticeType === 'sentence') {
+            // 句子练习提交
+            const result = this.sentencePracticeManager.checkAnswer(input);
+            const inputField = document.getElementById('word-input');
+            
+            if (result.isCorrect) {
+                // 正确
+                inputField.classList.add('correct');
+                this.showCorrectSentence();
+                setTimeout(() => {
+                    // 切换到下一个练习项
+                    this.switchToNextPracticeItem();
+                }, 1000);
+            } else {
+                // 错误
+                inputField.classList.add('error');
+                this.sentencePracticeManager.consecutiveErrors++;
+                
+                // 检查是否连续错误5次
+                if (this.sentencePracticeManager.consecutiveErrors >= 5) {
+                    const sentence = this.sentencePracticeManager.currentSentence;
+                    this.showCorrectAnswerForSentenceError(sentence);
+                    inputField.disabled = true;
+                    this.sentencePracticeManager.resetConsecutiveErrors();
+                    
+                    // 3秒后切换到下一个句子
+                    setTimeout(() => {
+                        inputField.disabled = false;
+                        this.switchToNextPracticeItem();
+                    }, 3000);
+                } else {
+                    // 清空输入，让用户重新输入
+                    setTimeout(() => {
+                        inputField.value = '';
+                        inputField.classList.remove('error');
+                        inputField.focus();
+                    }, 500);
+                }
+            }
+        } else {
+            // 单词练习提交
+            const result = this.practiceManager.submitAnswer(input);
+            
+            if (result.isCorrect) {
+                // 正确，显示单词和释义
+                this.showCorrectAnswer();
+                setTimeout(() => this.switchToNextPracticeItem(), 1000);
+            }
+            // 注意：错误的情况已经在handleInput中处理了（连续错误5次）
+            // 这里只处理正确的情况
         }
-        // 注意：错误的情况已经在handleInput中处理了（连续错误5次）
-        // 这里只处理正确的情况
+    }
+
+    // 切换到下一个练习项（单词或句子）
+    switchToNextPracticeItem() {
+        const practiceWords = document.getElementById('practice-words').checked;
+        const practiceSentences = document.getElementById('practice-sentences').checked;
+
+        if (practiceWords && practiceSentences) {
+            // 两种都选了，随机切换
+            this.currentPracticeType = Math.random() < 0.5 ? 'word' : 'sentence';
+        } else if (practiceWords) {
+            this.currentPracticeType = 'word';
+        } else {
+            this.currentPracticeType = 'sentence';
+        }
+
+        if (this.currentPracticeType === 'word') {
+            this.nextWord();
+        } else {
+            this.nextSentence();
+        }
     }
 
     // 显示正确答案（拼写正确时）

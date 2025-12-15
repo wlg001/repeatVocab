@@ -25,7 +25,21 @@
         <!-- 第二标题栏：练习模式操作栏 -->
         <div class="secondary-header practice-toolbar">
                 <div class="toolbar-section">
-                    <label class="toolbar-label">练习模式</label>
+                    <label class="toolbar-label">练习类型</label>
+                    <div class="toolbar-controls">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="practice-words" checked>
+                            <span>单词</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="practice-sentences">
+                            <span>句子</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="toolbar-section" id="word-mode-section">
+                    <label class="toolbar-label">单词模式</label>
                     <div class="toolbar-controls">
                         <label class="checkbox-label">
                             <input type="checkbox" id="mode-audio" checked>

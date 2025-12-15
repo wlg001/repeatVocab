@@ -874,8 +874,69 @@ What's your name?|你叫什么名字？
 
 ---
 
+### Commit 39: feat: 实现句子练习功能 🎯
+**用户需求：** 如何练习句子？UI上没找到操作入口
+
+**实现内容：**
+
+#### 1. 练习类型选择
+- 在练习工具栏添加"练习类型"选择：单词/句子复选框
+- 单独的"单词模式"区域（听发音/看中文），仅在选择单词时显示
+- 支持同时选择单词和句子混合练习
+
+#### 2. 句子练习核心逻辑
+- `UIController.currentPracticeType`: 追踪当前练习类型（'word'/'sentence'）
+- `nextSentence()`: 获取下一个句子并显示中文翻译
+- `updateSentencePracticeDisplay()`: 更新界面显示句子练习模式
+- `switchToNextPracticeItem()`: 混合模式下随机切换单词/句子
+
+#### 3. 答案验证逻辑
+- 句子模式：Enter键提交，调用 `SentencePracticeManager.checkAnswer()`
+- 忽略标点符号和大小写，严格比较英文内容
+- 连续错误5次显示正确答案，3秒后自动切换
+
+#### 4. 输入处理改进
+- `handleInput()`: 句子模式不做实时验证（与单词模式区分）
+- `handleSubmit()`: 统一处理单词和句子的提交逻辑
+- 错误反馈：句子错误时清空输入让用户重试
+
+#### 5. 显示优化
+- `showLastSentence()`: 显示上一个练习的句子
+- `showCorrectSentence()`: 显示正确的句子答案
+- `showCorrectAnswerForSentenceError()`: 5次错误后显示答案
+- 修改"上一个"标签文本以区分单词/句子
+
+#### 6. 状态管理
+- `stopPractice()`: 重置单词和句子的连续错误计数
+- `startPractice()`: 验证单词和句子数据是否足够
+
+**代码变更：**
+- `index.html`: 
+  - 添加练习类型选择UI（单词/句子复选框）
+  - 将单词模式独立为 `word-mode-section`
+- `app.js`: 
+  - UIController添加 `currentPracticeType` 属性
+  - 新增方法：`nextSentence()`, `updateSentencePracticeDisplay()`, `switchToNextPracticeItem()`
+  - 新增方法：`showLastSentence()`, `showCorrectSentence()`, `showCorrectAnswerForSentenceError()`
+  - 修改方法：`startPractice()`, `handleInput()`, `handleSubmit()`, `stopPractice()`
+  - 绑定事件：练习类型checkbox切换显示/隐藏单词模式区域
+
+**用户体验：**
+- ✅ 清晰的练习类型选择（单词/句子/混合）
+- ✅ 句子练习专注输入完整句子，不干扰实时验证
+- ✅ 混合模式随机切换，提高练习趣味性
+- ✅ 连续错误5次保护机制，避免卡住
+- ✅ 统一的答案显示和反馈机制
+
+**技术亮点：**
+- 复用现有UI组件（chinese-mode-content, correct-answer-display）
+- 状态管理清晰（currentPracticeType区分练习模式）
+- 混合练习随机算法简单有效
+
+---
+
 ### 下一步计划（阶段二继续）
-1. 实现句子练习界面
+1. ✅ 实现句子练习界面
 2. 扩展统计功能（分开显示单词和句子）
 3. 添加句子练习的快捷键支持
 
