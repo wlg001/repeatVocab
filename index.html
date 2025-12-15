@@ -261,6 +261,10 @@
                     <div class="stat-label">总单词数</div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-value" id="total-sentences">0</div>
+                    <div class="stat-label">总句子数</div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-value" id="total-practice">0</div>
                     <div class="stat-label">总练习次数</div>
                 </div>
@@ -275,6 +279,16 @@
             </div>
 
             <h3>打卡日历</h3>
+            <div class="calendar-controls" style="margin-bottom: 10px;">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="calendar-show-words" checked>
+                    <span>显示单词</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="calendar-show-sentences" checked>
+                    <span>显示句子</span>
+                </label>
+            </div>
             <div class="calendar-container">
                 <div class="calendar-header">
                     <button id="prev-month" class="btn btn-small">◀ 上月</button>
@@ -289,21 +303,24 @@
                     </div>
                     <div class="legend-item">
                         <span class="legend-color low-practice"></span>
-                        <span>1-5个单词</span>
+                        <span>1-5个</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-color medium-practice"></span>
-                        <span>6-15个单词</span>
+                        <span>6-15个</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-color high-practice"></span>
-                        <span>16+个单词</span>
+                        <span>16+个</span>
                     </div>
                 </div>
             </div>
 
             <h3>单词详细统计</h3>
             <div id="word-stats-list" class="word-stats-list"></div>
+
+            <h3 style="margin-top: 30px;">句子详细统计</h3>
+            <div id="sentence-stats-list" class="word-stats-list"></div>
         </div>
     </div>
 

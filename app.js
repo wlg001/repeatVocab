@@ -1044,6 +1044,10 @@ class UIController {
         document.getElementById('prev-month').addEventListener('click', () => this.prevMonth());
         document.getElementById('next-month').addEventListener('click', () => this.nextMonth());
 
+        // 日历显示切换
+        document.getElementById('calendar-show-words').addEventListener('change', () => this.updateCalendar());
+        document.getElementById('calendar-show-sentences').addEventListener('change', () => this.updateCalendar());
+
         // 高级设置展开/收起
         document.getElementById('toggle-advanced-settings').addEventListener('click', () => this.toggleAdvancedSettings());
         
@@ -2053,6 +2057,7 @@ class UIController {
     // 更新统计
     updateStats() {
         const words = Storage.getWords();
+        const sentences = Storage.getSentences();
         
         let totalPractice = 0;
         let totalCorrect = 0;
@@ -2064,7 +2069,14 @@ class UIController {
             totalError += word.stats.errorCount;
         });
 
+        sentences.forEach(sentence => {
+            totalPractice += sentence.stats.practiceCount;
+            totalCorrect += sentence.stats.correctCount;
+            totalError += sentence.stats.errorCount;
+        });
+
         document.getElementById('total-words').textContent = words.length;
+        document.getElementById('total-sentences').textContent = sentences.length;
         document.getElementById('total-practice').textContent = totalPractice;
         document.getElementById('total-correct').textContent = totalCorrect;
         document.getElementById('total-error').textContent = totalError;
@@ -2073,28 +2085,51 @@ class UIController {
         this.updateCalendar();
 
         // 单词详细统计
-        const statsListContainer = document.getElementById('word-stats-list');
+        const wordStatsListContainer = document.getElementById('word-stats-list');
         
         if (words.length === 0) {
-            statsListContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">还没有统计数据</p>';
-            return;
+            wordStatsListContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">还没有单词统计数据</p>';
+        } else {
+            const sortedWords = [...words].sort((a, b) => b.stats.practiceCount - a.stats.practiceCount);
+
+            wordStatsListContainer.innerHTML = sortedWords.map(word => `
+                <div class="word-stat-item">
+                    <div class="word-stat-header">
+                        <div class="word-stat-title">${word.word}</div>
+                        <div class="word-stat-proficiency">${word.proficiency}</div>
+                    </div>
+                    <div class="word-stat-details">
+                        <span>练习: ${word.stats.practiceCount}次</span>
+                        <span>正确: ${word.stats.correctCount}次</span>
+                        <span>错误: ${word.stats.errorCount}次</span>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        const sortedWords = [...words].sort((a, b) => b.stats.practiceCount - a.stats.practiceCount);
+        // 句子详细统计
+        const sentenceStatsListContainer = document.getElementById('sentence-stats-list');
+        
+        if (sentences.length === 0) {
+            sentenceStatsListContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">还没有句子统计数据</p>';
+        } else {
+            const sortedSentences = [...sentences].sort((a, b) => b.stats.practiceCount - a.stats.practiceCount);
 
-        statsListContainer.innerHTML = sortedWords.map(word => `
-            <div class="word-stat-item">
-                <div class="word-stat-header">
-                    <div class="word-stat-title">${word.word}</div>
-                    <div class="word-stat-proficiency">${word.proficiency}</div>
+            sentenceStatsListContainer.innerHTML = sortedSentences.map(sentence => `
+                <div class="word-stat-item">
+                    <div class="word-stat-header">
+                        <div class="word-stat-title">${sentence.english}</div>
+                        <div class="word-stat-proficiency">${sentence.proficiency}</div>
+                    </div>
+                    <div class="word-stat-details">
+                        <span>练习: ${sentence.stats.practiceCount}次</span>
+                        <span>正确: ${sentence.stats.correctCount}次</span>
+                        <span>错误: ${sentence.stats.errorCount}次</span>
+                    </div>
+                    <div style="color: #858585; font-size: 12px; margin-top: 5px;">${sentence.chinese}</div>
                 </div>
-                <div class="word-stat-details">
-                    <span>练习: ${word.stats.practiceCount}次</span>
-                    <span>正确: ${word.stats.correctCount}次</span>
-                    <span>错误: ${word.stats.errorCount}次</span>
-                </div>
-            </div>
-        `).join('');
+            `).join('');
+        }
     }
 
     // 更新打卡日历
@@ -2108,7 +2143,11 @@ class UIController {
         this.currentCalendarYear = year;
         this.currentCalendarMonth = month;
 
-        const practiceLog = Storage.getPracticeLog();
+        const showWords = document.getElementById('calendar-show-words').checked;
+        const showSentences = document.getElementById('calendar-show-sentences').checked;
+
+        const wordPracticeLog = Storage.getPracticeLog();
+        const sentencePracticeLog = Storage.getSentencePracticeLog();
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
@@ -2145,25 +2184,47 @@ class UIController {
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isToday = dateStr === todayStr;
-            const dayLog = practiceLog[dateStr];
+            const wordDayLog = wordPracticeLog[dateStr];
+            const sentenceDayLog = sentencePracticeLog[dateStr];
             
             let practiceClass = 'no-practice';
             let practiceInfo = '';
+            let totalCount = 0;
+            let totalCorrect = 0;
             
-            if (dayLog) {
-                const wordCount = dayLog.wordIds ? dayLog.wordIds.length : 0;
-                const correctCount = dayLog.correctCount || 0;
+            if (showWords && wordDayLog) {
+                const wordCount = wordDayLog.wordIds ? wordDayLog.wordIds.length : 0;
+                const wordCorrect = wordDayLog.correctCount || 0;
+                totalCount += wordCount;
+                totalCorrect += wordCorrect;
+            }
+            
+            if (showSentences && sentenceDayLog) {
+                const sentenceCount = sentenceDayLog.sentenceIds ? sentenceDayLog.sentenceIds.length : 0;
+                const sentenceCorrect = sentenceDayLog.correctCount || 0;
+                totalCount += sentenceCount;
+                totalCorrect += sentenceCorrect;
+            }
+            
+            if (totalCount > 0) {
+                let displayText = '';
+                if (showWords && showSentences) {
+                    const wc = wordDayLog ? (wordDayLog.wordIds ? wordDayLog.wordIds.length : 0) : 0;
+                    const sc = sentenceDayLog ? (sentenceDayLog.sentenceIds ? sentenceDayLog.sentenceIds.length : 0) : 0;
+                    displayText = `${wc}词 ${sc}句`;
+                } else if (showWords) {
+                    displayText = `${totalCount}词`;
+                } else {
+                    displayText = `${totalCount}句`;
+                }
+                practiceInfo = `${displayText} ${totalCorrect}对`;
                 
-                if (wordCount > 0) {
-                    practiceInfo = `${wordCount}词 ${correctCount}对`;
-                    
-                    if (wordCount >= 16) {
-                        practiceClass = 'high-practice';
-                    } else if (wordCount >= 6) {
-                        practiceClass = 'medium-practice';
-                    } else {
-                        practiceClass = 'low-practice';
-                    }
+                if (totalCount >= 16) {
+                    practiceClass = 'high-practice';
+                } else if (totalCount >= 6) {
+                    practiceClass = 'medium-practice';
+                } else {
+                    practiceClass = 'low-practice';
                 }
             }
             
